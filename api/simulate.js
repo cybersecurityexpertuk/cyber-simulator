@@ -1,49 +1,60 @@
-export default function handler(req, res) {
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method === "GET") {
-    return res.status(200).json({
-      summary: "A temporary exception created a weakness that was not reviewed or removed.",
-      failure_chain: [
-        "A legacy admin account was excluded from MFA during a support workaround.",
-        "The exception remained in place beyond the intended timeframe.",
-        "Privileged activity monitoring did not detect the exposure promptly.",
-        "An attacker used the exempt account to gain elevated access."
-      ],
-      business_impact: "Critical systems were disrupted and sensitive data was exposed, creating operational and reputational impact.",
-      key_controls: [
-        "Consistent MFA enforcement",
-        "Review of temporary access exceptions",
-        "Privileged account monitoring",
-        "Continuous control validation"
-      ]
-    });
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  return res.status(200).json({
-    summary: "A temporary exception created a weakness that was not reviewed or removed.",
-    failure_chain: [
-      "A legacy admin account was excluded from MFA during a support workaround.",
-      "The exception remained in place beyond the intended timeframe.",
-      "Privileged activity monitoring did not detect the exposure promptly.",
-      "An attacker used the exempt account to gain elevated access."
-    ],
-    business_impact: "Critical systems were disrupted and sensitive data was exposed, creating operational and reputational impact.",
-    key_controls: [
-      "Consistent MFA enforcement",
-      "Review of temporary access exceptions",
-      "Privileged account monitoring",
-      "Continuous control validation"
-    ]
-  });
+  try {
+    const { scenario, environment } = req.body || {};
+
+    if (!scenario || !environment) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const prompt = `
+You are a cybersecurity control failure simulator.
+
+Return valid JSON only in this exact structure:
+{
+  "summary": "string",
+  "failure_chain": ["step 1", "step 2", "step 3", "step 4"],
+  "business_impact": "string",
+  "key_controls": ["control 1", "control 2", "control 3", "control 4"]
+}
+
+Scenario: ${scenario}
+Environment: ${environment}
+
+Create a realistic cyber incident chain showing how a control weakness escalates into a wider incident.
+Use plain English suitable for cybersecurity leaders.
+Do not include markdown.
+Do not include code fences.
+`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: prompt
+    });
+
+    const text = response.output_text || "";
+    const parsed = JSON.parse(text);
+
+    return res.status(200).json(parsed);
+  } catch (error) {
+    console.error("Simulation error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 }
