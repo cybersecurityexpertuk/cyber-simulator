@@ -1,8 +1,4 @@
 {
   "name": "cyber-simulator",
-  "version": "1.0.0",
-  "description": "Cyber control failure simulator API",
-  "dependencies": {
-    "openai": "^4.56.0"
-  }
+  "version": "1.0.0"
 }
