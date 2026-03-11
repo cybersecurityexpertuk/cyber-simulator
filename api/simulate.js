@@ -38,9 +38,9 @@ Return valid JSON only in this exact structure:
 Scenario: ${scenario}
 Environment: ${environment}
 
-Make the output specific to the chosen scenario and environment.
-Do not reuse generic wording.
+Make the result specific to the selected scenario and environment.
 Use realistic cybersecurity language for senior leaders.
+Do not repeat generic wording.
 Do not include markdown.
 Do not include code fences.
 `;
@@ -54,7 +54,6 @@ Do not include code fences.
     const parsed = JSON.parse(text);
 
     return res.status(200).json(parsed);
-
   } catch (error) {
     console.error("Simulation error:", error);
     return res.status(500).json({ error: "Internal server error" });
