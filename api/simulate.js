@@ -38,8 +38,9 @@ Return valid JSON only in this exact structure:
 Scenario: ${scenario}
 Environment: ${environment}
 
-Create a realistic cyber incident chain showing how a control weakness escalates into a wider incident.
-Use plain English suitable for cybersecurity leaders.
+Make the output specific to the chosen scenario and environment.
+Do not reuse generic wording.
+Use realistic cybersecurity language for senior leaders.
 Do not include markdown.
 Do not include code fences.
 `;
@@ -53,6 +54,7 @@ Do not include code fences.
     const parsed = JSON.parse(text);
 
     return res.status(200).json(parsed);
+
   } catch (error) {
     console.error("Simulation error:", error);
     return res.status(500).json({ error: "Internal server error" });
