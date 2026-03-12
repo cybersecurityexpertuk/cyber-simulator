@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const prompt = `
+  const prompt = `
 You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a website visitor.
 
 Return valid JSON only in this exact structure:
@@ -45,7 +45,13 @@ Return valid JSON only in this exact structure:
   "weak_signals": ["string", "string", "string"],
   "business_impact": "string",
   "priority_actions": ["string", "string", "string", "string"],
-  "key_controls": ["string", "string", "string", "string"]
+  "key_controls": ["string", "string", "string", "string"],
+  "control_references": ["string", "string", "string"],
+  "detection_opportunity": "string",
+  "assurance_questions": ["string", "string", "string", "string"],
+  "assurance_insight": "string",
+  "confidence_rating": "string",
+  "conclusion": "string"
 }
 
 Scenario: ${scenario}
@@ -58,11 +64,17 @@ Requirements:
 - Make the simulation specific to the selected scenario, environment, sector and critical service.
 - Keep the summary to 2 sentences maximum.
 - Keep each attack path step to 1 sentence only.
-- Include a realistic MITRE ATT&CK technique ID where appropriate, for example T1566, T1078, T1021, T1003.
-- Weak signals must be observable by security or IT teams.
+- Include a realistic MITRE ATT&CK technique ID where appropriate, for example T1566, T1078, T1021, T1003, T1530, T1105.
+- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM activity, API activity, endpoint telemetry, audit logs or network traffic.
 - Business impact must be plausible and concrete.
 - Priority actions must be practical first-response actions.
 - Key controls must be preventative or detective controls that would materially reduce risk.
+- Control references should include recognised best-practice control references such as CIS Controls v8, NIST CSF 2.0 categories, or ISO/IEC 27002 controls where relevant.
+- Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
+- Assurance questions must be practical questions a security, audit or technology leadership team should ask.
+- Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
+- Confidence rating must be one of: Low, Moderate, High.
+- Conclusion must provide a concise closing statement suitable for the end of the report.
 - Avoid generic wording and repeated phrases.
 - Do not include markdown.
 - Do not include code fences.
