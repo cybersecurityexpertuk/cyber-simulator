@@ -4,6 +4,30 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+async function verifyTurnstileToken(token, remoteip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+
+  if (!secret || !token) {
+    return false;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("secret", secret);
+  formData.append("response", token);
+
+  if (remoteip) {
+    formData.append("remoteip", remoteip);
+  }
+
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await response.json();
+  return !!data.success;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -23,14 +47,25 @@ export default async function handler(req, res) {
       environment,
       sector,
       critical_service,
-      organisation_size
+      organisation_size,
+      currency,
+      turnstileToken
     } = req.body || {};
 
     if (!scenario || !environment) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-  const prompt = `
+    const remoteip =
+      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
+
+    const isHuman = await verifyTurnstileToken(turnstileToken, remoteip);
+
+    if (!isHuman) {
+      return res.status(403).json({ error: "Turnstile verification failed" });
+    }
+
+    const prompt = `
 You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a website visitor.
 
 Return valid JSON only in this exact structure:
@@ -59,6 +94,7 @@ Environment: ${environment}
 Sector: ${sector || "Not provided"}
 Critical service: ${critical_service || "Not provided"}
 Organisation size: ${organisation_size || "Not provided"}
+Currency: ${currency || "GBP"}
 
 Requirements:
 - Make the simulation specific to the selected scenario, environment, sector and critical service.
@@ -67,6 +103,7 @@ Requirements:
 - Include a realistic MITRE ATT&CK technique ID where appropriate, for example T1566, T1078, T1021, T1003, T1530, T1105.
 - Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM activity, API activity, endpoint telemetry, audit logs or network traffic.
 - Business impact must be plausible and concrete.
+- Where financial impact is included, express it in the selected currency and make it plausible for the selected sector, service and organisation size.
 - Priority actions must be practical first-response actions.
 - Key controls must be preventative or detective controls that would materially reduce risk.
 - Control references should include recognised best-practice control references such as CIS Controls v8, NIST CSF 2.0 categories, or ISO/IEC 27002 controls where relevant.
