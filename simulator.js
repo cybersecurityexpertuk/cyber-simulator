@@ -41,6 +41,24 @@ document.addEventListener("DOMContentLoaded", function () {
     "T1530": "Data from Cloud Storage Object"
   };
 
+  function getTurnstileToken() {
+  var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
+
+  if (cfTokenEl && cfTokenEl.value) {
+    return cfTokenEl.value;
+  }
+
+  if (turnstileTokenEl && turnstileTokenEl.value) {
+    return turnstileTokenEl.value;
+  }
+
+  return "";
+}
+
+function isVerified() {
+  return !!getTurnstileToken();
+}
+  
 function getTurnstileToken() {
   var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
 
@@ -533,23 +551,23 @@ function isVerified() {
     }
   }
 
-  window.onSimTurnstileSuccess = function (token) {
-    if (turnstileTokenEl) {
-      turnstileTokenEl.value = token || "";
-    }
-  };
+window.onSimTurnstileSuccess = function (token) {
+  if (turnstileTokenEl) {
+    turnstileTokenEl.value = token || "";
+  }
+};
 
-  window.onSimTurnstileExpired = function () {
-    if (turnstileTokenEl) {
-      turnstileTokenEl.value = "";
-    }
-  };
+window.onSimTurnstileExpired = function () {
+  if (turnstileTokenEl) {
+    turnstileTokenEl.value = "";
+  }
+};
 
-  window.onSimTurnstileError = function () {
-    if (turnstileTokenEl) {
-      turnstileTokenEl.value = "";
-    }
-  };
+window.onSimTurnstileError = function () {
+  if (turnstileTokenEl) {
+    turnstileTokenEl.value = "";
+  }
+};
 
   window.applyPreset = function (preset) {
     if (!scenarioEl || !environmentEl || !sectorEl || !criticalServiceEl || !organisationSizeEl || !currencyEl) return;
@@ -742,6 +760,7 @@ var payload = {
   currency: currencyEl.value || "",
   turnstileToken: getTurnstileToken()
 };
+
 console.log("Turnstile token being sent:", getTurnstileToken());
       
       fetch(SIM_ENDPOINT, {
