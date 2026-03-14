@@ -18,11 +18,17 @@ document.addEventListener("DOMContentLoaded", function () {
   var summaryWrap = document.getElementById("sim-results-summary");
   var reportWrap = document.getElementById("sim-report-print");
 
+  var copyBtn = document.getElementById("sim-copy-summary");
+  var printBtn = document.getElementById("sim-print-report-top");
+  var shareBtn = document.getElementById("sim-share-report");
+  var runAnotherBtn = document.getElementById("sim-run-another-top");
+
   var latestSimulationData = null;
   var latestReportId = null;
 
   var simProgressInterval = null;
   var simProgressValue = 8;
+  var simulationRunning = false;
 
   var mitreNames = {
     "T1078": "Valid Accounts",
@@ -38,7 +44,11 @@ document.addEventListener("DOMContentLoaded", function () {
     "T1105": "Ingress Tool Transfer",
     "T1567": "Exfiltration Over Web Service",
     "T1567.002": "Exfiltration to Cloud Storage",
-    "T1530": "Data from Cloud Storage Object"
+    "T1530": "Data from Cloud Storage Object",
+    "T1195": "Supply Chain Compromise",
+    "T1604": "Drive-by Compromise",
+    "T1056": "Input Capture",
+    "T1041": "Exfiltration Over C2 Channel"
   };
 
   function safeText(value, fallback) {
@@ -116,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
           : "";
         var mitreName = mitreNames[mitreId] || "";
         var badgeText = mitreId
-          ? "MITRE " + mitreId + (mitreName ? " · " + mitreName : "")
+          ? "MITRE " + mitreId + (mitreName ? " (" + mitreName + ")" : "")
           : "";
 
         html +=
@@ -152,11 +162,62 @@ document.addEventListener("DOMContentLoaded", function () {
     if (reportWrap) reportWrap.classList.add("sim-hidden");
   }
 
+  function setButtonDisplay(el, show) {
+    if (!el) return;
+    el.style.display = show ? "" : "none";
+  }
+
+  function setButtonDisabled(el, disabled) {
+    if (!el) return;
+    el.disabled = !!disabled;
+  }
+
+  function updateActionButtons() {
+    var hasResults = !!latestSimulationData;
+
+    if (simulationRunning) {
+      setButtonDisplay(simSubmit, false);
+      setButtonDisplay(simReset, false);
+
+      setButtonDisabled(copyBtn, true);
+      setButtonDisabled(printBtn, true);
+      setButtonDisabled(shareBtn, true);
+      setButtonDisabled(runAnotherBtn, true);
+      return;
+    }
+
+    setButtonDisplay(simSubmit, true);
+    setButtonDisplay(simReset, true);
+
+    setButtonDisabled(simSubmit, false);
+    setButtonDisabled(simReset, false);
+    setButtonDisabled(copyBtn, !hasResults);
+    setButtonDisabled(printBtn, !hasResults);
+    setButtonDisabled(shareBtn, !hasResults);
+    setButtonDisabled(runAnotherBtn, !hasResults);
+  }
+
+  function setRunningState(isRunning) {
+    simulationRunning = !!isRunning;
+    updateActionButtons();
+  }
+
   function showError(message) {
     clearInterval(simProgressInterval);
+    setRunningState(false);
+
     if (simFeedback) {
       simFeedback.innerHTML =
         '<div class="sim-error"><strong>Unable to run simulation.</strong><br>' +
+        escapeHtml(message) +
+        "</div>";
+    }
+  }
+
+  function showSuccess(message) {
+    if (simFeedback) {
+      simFeedback.innerHTML =
+        '<div class="sim-success"><strong>Success.</strong><br>' +
         escapeHtml(message) +
         "</div>";
     }
@@ -359,6 +420,16 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
   }
 
+  function setTextById(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function setHtmlById(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = value;
+  }
+
   function renderReport(data) {
     var scenarioText = getSelectedText(scenarioEl);
     var environmentText = getSelectedText(environmentEl);
@@ -507,24 +578,24 @@ document.addEventListener("DOMContentLoaded", function () {
       raw: data
     };
 
-    document.getElementById("sim-kpi-scenario").textContent = scenarioText;
-    document.getElementById("sim-kpi-environment").textContent = environmentText;
-    document.getElementById("sim-kpi-severity").textContent = severity;
-    document.getElementById("sim-kpi-confidence").textContent = confidence;
-    document.getElementById("sim-kpi-impact").textContent = buildImpactKpi(data);
-    document.getElementById("sim-kpi-likelihood").textContent = likelihood;
+    setTextById("sim-kpi-scenario", scenarioText);
+    setTextById("sim-kpi-environment", environmentText);
+    setTextById("sim-kpi-severity", severity);
+    setTextById("sim-kpi-confidence", confidence);
+    setTextById("sim-kpi-impact", buildImpactKpi(data));
+    setTextById("sim-kpi-likelihood", likelihood);
 
-    document.getElementById("sim-board-risk-statement").textContent = boardRiskStatement;
-    document.getElementById("sim-board-brief").textContent = boardBrief;
-    document.getElementById("sim-summary-text").textContent = executiveSummary;
-    document.getElementById("sim-detection-opportunity").textContent = detectionOpportunity;
+    setTextById("sim-board-risk-statement", boardRiskStatement);
+    setTextById("sim-board-brief", boardBrief);
+    setTextById("sim-summary-text", executiveSummary);
+    setTextById("sim-detection-opportunity", detectionOpportunity);
 
-    document.getElementById("sim-financial-downtime").textContent = formatDowntime(financial.downtime_hours);
-    document.getElementById("sim-financial-response").textContent = safeText(financial.response_cost);
-    document.getElementById("sim-financial-revenue").textContent = safeText(financial.lost_revenue);
-    document.getElementById("sim-financial-regulatory").textContent = safeText(financial.regulatory_exposure);
-    document.getElementById("sim-financial-customer").textContent = safeText(financial.customer_remediation_cost);
-    document.getElementById("sim-financial-total").textContent = safeText(financial.total_estimated_impact);
+    setTextById("sim-financial-downtime", formatDowntime(financial.downtime_hours));
+    setTextById("sim-financial-response", safeText(financial.response_cost));
+    setTextById("sim-financial-revenue", safeText(financial.lost_revenue));
+    setTextById("sim-financial-regulatory", safeText(financial.regulatory_exposure));
+    setTextById("sim-financial-customer", safeText(financial.customer_remediation_cost));
+    setTextById("sim-financial-total", safeText(financial.total_estimated_impact));
 
     fillList("sim-top-actions", immediateActions.slice(0, 4), []);
     fillList("sim-control-gaps", controlGaps.slice(0, 4), []);
@@ -535,7 +606,8 @@ document.addEventListener("DOMContentLoaded", function () {
     fillList("sim-framework-iso", framework.iso, []);
     fillList("sim-evidence-list", evidenceList, []);
 
-    document.getElementById("sim-meta-box").innerHTML =
+    setHtmlById(
+      "sim-meta-box",
       "<p><strong>Report ID:</strong> " + escapeHtml(reportId) + "</p>" +
       "<p><strong>Generated:</strong> " + escapeHtml(generatedAt) + "</p>" +
       "<p><strong>Scenario:</strong> " + escapeHtml(scenarioText) + "</p>" +
@@ -543,12 +615,13 @@ document.addEventListener("DOMContentLoaded", function () {
       "<p><strong>Sector:</strong> " + escapeHtml(sectorText) + "</p>" +
       "<p><strong>Critical Service:</strong> " + escapeHtml(serviceText) + "</p>" +
       "<p><strong>Organisation Size:</strong> " + escapeHtml(orgSizeText) + "</p>" +
-      "<p><strong>Currency:</strong> " + escapeHtml(currencyText) + "</p>";
+      "<p><strong>Currency:</strong> " + escapeHtml(currencyText) + "</p>"
+    );
 
-    document.getElementById("sim-report-board-risk-statement").textContent = boardRiskStatement;
-    document.getElementById("sim-report-board-brief").textContent = boardBrief;
-    document.getElementById("sim-report-summary").textContent = executiveSummary;
-    document.getElementById("sim-report-severity").textContent = severity;
+    setTextById("sim-report-board-risk-statement", boardRiskStatement);
+    setTextById("sim-report-board-brief", boardBrief);
+    setTextById("sim-report-summary", executiveSummary);
+    setTextById("sim-report-severity", severity);
 
     var financialSummary = "Estimated impact: " + buildImpactKpi(data);
     if (data.financial_impact) {
@@ -560,27 +633,30 @@ document.addEventListener("DOMContentLoaded", function () {
         ". Regulatory exposure: " + safeText(financial.regulatory_exposure, "-") +
         ". Customer remediation: " + safeText(financial.customer_remediation_cost, "-") + ".";
     }
-    document.getElementById("sim-report-financial-impact").textContent = financialSummary;
+
+    setTextById("sim-report-financial-impact", financialSummary);
 
     fillList("sim-report-attack-path", attackPath, [], "attack-path");
     fillList("sim-report-weak-signals", weakSignals, []);
-    document.getElementById("sim-report-impact").textContent = buildImpactText(data);
+    setTextById("sim-report-impact", buildImpactText(data));
     fillList("sim-report-controls", controlGaps, []);
-    document.getElementById("sim-report-framework-cis").textContent = framework.cis.length ? framework.cis.join(", ") : "-";
-    document.getElementById("sim-report-framework-nist").textContent = framework.nist.length ? framework.nist.join(", ") : "-";
-    document.getElementById("sim-report-framework-iso").textContent = framework.iso.length ? framework.iso.join(", ") : "-";
+    setTextById("sim-report-framework-cis", framework.cis.length ? framework.cis.join(", ") : "-");
+    setTextById("sim-report-framework-nist", framework.nist.length ? framework.nist.join(", ") : "-");
+    setTextById("sim-report-framework-iso", framework.iso.length ? framework.iso.join(", ") : "-");
     fillList("sim-report-actions", immediateActions, []);
     fillList("sim-report-evidence", evidenceList, []);
     fillList("sim-report-timeline", timeline, []);
-    document.getElementById("sim-report-detection").textContent = detectionOpportunity;
-    document.getElementById("sim-report-detection-time").textContent = detectionTime;
+    setTextById("sim-report-detection", detectionOpportunity);
+    setTextById("sim-report-detection-time", detectionTime);
     fillList("sim-report-questions", assuranceQuestions, []);
-    document.getElementById("sim-report-insight").textContent = assuranceInsight;
-    document.getElementById("sim-report-confidence").textContent = confidence;
-    document.getElementById("sim-report-conclusion").textContent = conclusion;
+    setTextById("sim-report-insight", assuranceInsight);
+    setTextById("sim-report-confidence", confidence);
+    setTextById("sim-report-conclusion", conclusion);
 
     if (summaryWrap) summaryWrap.classList.remove("sim-hidden");
     if (reportWrap) reportWrap.classList.remove("sim-hidden");
+
+    updateActionButtons();
 
     if (summaryWrap && summaryWrap.scrollIntoView) {
       summaryWrap.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -590,10 +666,17 @@ document.addEventListener("DOMContentLoaded", function () {
   function resetFormAndResults() {
     if (simForm) simForm.reset();
     if (simFeedback) simFeedback.innerHTML = "";
+
     latestSimulationData = null;
     latestReportId = null;
+
+    clearInterval(simProgressInterval);
+    simProgressValue = 8;
+    setRunningState(false);
+
     clearResults();
     resetTurnstileWidget();
+    updateActionButtons();
   }
 
   window.onSimTurnstileSuccess = function (token) {
@@ -653,65 +736,68 @@ document.addEventListener("DOMContentLoaded", function () {
       currencyEl.value = "USD";
     }
 
-    if (simFeedback) {
-      simFeedback.innerHTML =
-        '<div class="sim-success"><strong>Preset applied.</strong> Review the fields, complete verification, then run the simulation.</div>';
-    }
+    showSuccess("Preset applied. Review the fields, complete verification, then run the simulation.");
   };
 
   if (simReset) {
-    simReset.addEventListener("click", function () {
+    simReset.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (simulationRunning) return;
       resetFormAndResults();
     });
   }
 
-  var copyBtn = document.getElementById("sim-copy-summary");
   if (copyBtn) {
-    copyBtn.addEventListener("click", function () {
+    copyBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+
       var textEl = document.getElementById("sim-summary-text");
       var text = textEl ? textEl.textContent || "" : "";
 
+      if (!latestSimulationData || !text) {
+        showError("There is no summary available to copy yet.");
+        return;
+      }
+
       if (!navigator.clipboard) {
-        if (simFeedback) {
-          simFeedback.innerHTML =
-            '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
-        }
+        showError("Copy failed. Please copy the summary manually.");
         return;
       }
 
       navigator.clipboard.writeText(text).then(function () {
-        if (simFeedback) {
-          simFeedback.innerHTML =
-            '<div class="sim-success"><strong>Copied.</strong> Executive summary copied to clipboard.</div>';
-        }
+        showSuccess("Executive summary copied to clipboard.");
       }).catch(function () {
-        if (simFeedback) {
-          simFeedback.innerHTML =
-            '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
-        }
+        showError("Copy failed. Please copy the summary manually.");
       });
     });
   }
 
-  var printBtn = document.getElementById("sim-print-report-top");
   if (printBtn) {
-    printBtn.addEventListener("click", function () {
+    printBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+
+      if (!latestSimulationData) {
+        showError("Please run a simulation first.");
+        return;
+      }
+
       window.print();
     });
   }
 
-  var shareBtn = document.getElementById("sim-share-report");
   if (shareBtn) {
-    shareBtn.addEventListener("click", function () {
+    shareBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+
+      if (simulationRunning) return;
+
       if (!latestSimulationData) {
-        if (simFeedback) {
-          simFeedback.innerHTML =
-            '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
-        }
+        showError("No simulation to share. Please run a simulation first.");
         return;
       }
 
       shareBtn.disabled = true;
+      shareBtn.textContent = "Creating link...";
 
       fetch(SHARE_ENDPOINT, {
         method: "POST",
@@ -732,53 +818,63 @@ document.addEventListener("DOMContentLoaded", function () {
           return response.json();
         })
         .then(function (result) {
+          if (!result || !result.blob_url) {
+            throw new Error("Share service did not return a valid link.");
+          }
+
           var shareUrl =
             window.location.origin +
             "/sim-report?url=" +
             encodeURIComponent(result.blob_url);
 
           if (navigator.clipboard) {
-            navigator.clipboard.writeText(shareUrl).then(function () {
+            return navigator.clipboard.writeText(shareUrl).then(function () {
               if (simFeedback) {
                 simFeedback.innerHTML =
-                  '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br>' +
+                  '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br><a href="' +
                   escapeHtml(shareUrl) +
-                  "</div>";
+                  '" target="_blank" rel="noopener noreferrer">' +
+                  escapeHtml(shareUrl) +
+                  "</a></div>";
               }
             }).catch(function () {
               if (simFeedback) {
                 simFeedback.innerHTML =
-                  '<div class="sim-success"><strong>Share link created.</strong><br>' +
+                  '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
                   escapeHtml(shareUrl) +
-                  "</div>";
+                  '" target="_blank" rel="noopener noreferrer">' +
+                  escapeHtml(shareUrl) +
+                  "</a></div>";
               }
             });
-          } else {
-            if (simFeedback) {
-              simFeedback.innerHTML =
-                '<div class="sim-success"><strong>Share link created.</strong><br>' +
-                escapeHtml(shareUrl) +
-                "</div>";
-            }
+          }
+
+          if (simFeedback) {
+            simFeedback.innerHTML =
+              '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
+              escapeHtml(shareUrl) +
+              '" target="_blank" rel="noopener noreferrer">' +
+              escapeHtml(shareUrl) +
+              "</a></div>";
           }
         })
         .catch(function (error) {
-          if (simFeedback) {
-            simFeedback.innerHTML =
-              '<div class="sim-error"><strong>Share link failed.</strong><br>' +
-              escapeHtml(error.message || "Unknown error") +
-              "</div>";
-          }
+          showError(error.message || "Unknown error");
         })
         .finally(function () {
           shareBtn.disabled = false;
+          shareBtn.textContent = "Create Share Link";
+          updateActionButtons();
         });
     });
   }
 
-  var runAnotherBtn = document.getElementById("sim-run-another-top");
   if (runAnotherBtn) {
-    runAnotherBtn.addEventListener("click", function () {
+    runAnotherBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+
+      if (simulationRunning) return;
+
       resetFormAndResults();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -787,6 +883,9 @@ document.addEventListener("DOMContentLoaded", function () {
   if (simForm) {
     simForm.addEventListener("submit", function (e) {
       e.preventDefault();
+
+      if (simulationRunning) return;
+
       clearResults();
 
       if (!scenarioEl.value || !environmentEl.value || !sectorEl.value) {
@@ -799,7 +898,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      simSubmit.disabled = true;
+      latestSimulationData = null;
+      latestReportId = null;
+      setRunningState(true);
       startFakeProgress();
 
       var payload = {
@@ -837,8 +938,12 @@ document.addEventListener("DOMContentLoaded", function () {
           resetTurnstileWidget();
         })
         .finally(function () {
-          simSubmit.disabled = false;
+          setRunningState(false);
+          updateActionButtons();
         });
     });
   }
+
+  clearResults();
+  updateActionButtons();
 });
