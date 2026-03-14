@@ -19,18 +19,13 @@ async function verifyTurnstileToken(token, remoteip) {
     formData.append("remoteip", remoteip);
   }
 
-  const response = await fetch(
-    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    {
-      method: "POST",
-      body: formData
-    }
-  );
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: formData
+  });
 
   const data = await response.json();
-  console.log("Turnstile response:", data);
-
-  return data.success;
+  return !!data.success;
 }
 
 function ensureArray(value, fallback) {
@@ -44,11 +39,28 @@ function normaliseOutput(parsed, selectedCurrency) {
     summary: "A realistic cyber scenario has been generated based on the selected context, highlighting how weak or failed controls may escalate into operational disruption, financial loss and assurance concerns.",
     board_brief: "This scenario should be treated as a material control-effectiveness discussion point for leadership, with focus on service impact, control gaps and rapid containment readiness.",
     board_risk_statement: "This scenario represents a plausible route to material operational disruption, customer harm and regulatory scrutiny if control weaknesses remain unresolved.",
+    severity: "High",
     attack_path: [
-      { phase: "Initial Access", step: "An initiating control weakness created an exploitable opportunity.", mitre: "T1078" },
-      { phase: "Privilege Misuse", step: "The attacker or insider moved through weak access controls.", mitre: "T1098" },
-      { phase: "Lateral Movement", step: "The incident chain progressed due to weak monitoring or segmentation.", mitre: "T1021" },
-      { phase: "Impact", step: "Business-critical services or data became exposed to operational and regulatory risk.", mitre: "T1499" }
+      {
+        phase: "Initial Access",
+        step: "An initiating control weakness created an exploitable opportunity.",
+        mitre: "T1078"
+      },
+      {
+        phase: "Privilege Misuse",
+        step: "The attacker or insider moved through weak access controls.",
+        mitre: "T1098"
+      },
+      {
+        phase: "Lateral Movement",
+        step: "The incident chain progressed due to weak monitoring or segmentation.",
+        mitre: "T1021"
+      },
+      {
+        phase: "Impact",
+        step: "Business-critical services or data became exposed to operational and regulatory risk.",
+        mitre: "T1499"
+      }
     ],
     weak_signals: [
       "Unusual authentication events involving privileged or service identities.",
@@ -58,7 +70,7 @@ function normaliseOutput(parsed, selectedCurrency) {
     business_impact: "Operational disruption affects critical services, increases manual workarounds and creates customer harm, regulatory exposure and reputational damage.",
     financial_impact: {
       currency: safeCurrency,
-      downtime_hours: "12-24 hours",
+      downtime_hours: "12-24",
       response_cost: `${safeCurrency} 150,000 - 400,000`,
       lost_revenue: `${safeCurrency} 500,000 - 1,500,000`,
       regulatory_exposure: `${safeCurrency} 250,000 - 1,000,000`,
@@ -82,6 +94,14 @@ function normaliseOutput(parsed, selectedCurrency) {
       nist_csf_2_0: ["PR.AA", "DE.CM", "RS.AN"],
       iso_iec_27002_2022: ["5.15", "5.16", "8.15"]
     },
+    evidence_to_request: [
+      "Privileged access review evidence for the affected service and administrator roles",
+      "IAM and audit log extracts covering sign-in activity, policy changes and administrative actions",
+      "MFA and conditional access policy evidence, including exported settings or screenshots",
+      "Service account, API key or token inventory relevant to the affected environment",
+      "Incident timeline and containment records for the affected scenario",
+      "SIEM or alert rule evidence showing how anomalous activity would be detected"
+    ],
     detection_opportunity: "Earlier detection would likely have depended on stronger monitoring of identity, audit, API and abnormal access patterns.",
     assurance_questions: [
       "Which controls were assumed to be working but were not independently validated?",
@@ -98,6 +118,7 @@ function normaliseOutput(parsed, selectedCurrency) {
     summary: parsed.summary || defaults.summary,
     board_brief: parsed.board_brief || defaults.board_brief,
     board_risk_statement: parsed.board_risk_statement || defaults.board_risk_statement,
+    severity: parsed.severity || defaults.severity,
     attack_path: ensureArray(parsed.attack_path, defaults.attack_path),
     weak_signals: ensureArray(parsed.weak_signals, defaults.weak_signals),
     business_impact: parsed.business_impact || defaults.business_impact,
@@ -113,10 +134,20 @@ function normaliseOutput(parsed, selectedCurrency) {
     priority_actions: ensureArray(parsed.priority_actions, defaults.priority_actions),
     key_controls: ensureArray(parsed.key_controls, defaults.key_controls),
     control_framework_references: {
-      cis_controls_v8: ensureArray(parsed.control_framework_references?.cis_controls_v8, defaults.control_framework_references.cis_controls_v8),
-      nist_csf_2_0: ensureArray(parsed.control_framework_references?.nist_csf_2_0, defaults.control_framework_references.nist_csf_2_0),
-      iso_iec_27002_2022: ensureArray(parsed.control_framework_references?.iso_iec_27002_2022, defaults.control_framework_references.iso_iec_27002_2022)
+      cis_controls_v8: ensureArray(
+        parsed.control_framework_references?.cis_controls_v8,
+        defaults.control_framework_references.cis_controls_v8
+      ),
+      nist_csf_2_0: ensureArray(
+        parsed.control_framework_references?.nist_csf_2_0,
+        defaults.control_framework_references.nist_csf_2_0
+      ),
+      iso_iec_27002_2022: ensureArray(
+        parsed.control_framework_references?.iso_iec_27002_2022,
+        defaults.control_framework_references.iso_iec_27002_2022
+      )
     },
+    evidence_to_request: ensureArray(parsed.evidence_to_request, defaults.evidence_to_request),
     detection_opportunity: parsed.detection_opportunity || defaults.detection_opportunity,
     assurance_questions: ensureArray(parsed.assurance_questions, defaults.assurance_questions),
     assurance_insight: parsed.assurance_insight || defaults.assurance_insight,
@@ -165,13 +196,14 @@ export default async function handler(req, res) {
     }
 
     const prompt = `
-You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a professional website tool used by CISOs, security leaders, internal audit, risk teams and boards.
+You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a website visitor.
 
 Return valid JSON only in this exact structure:
 {
   "summary": "string",
   "board_brief": "string",
   "board_risk_statement": "string",
+  "severity": "Low | Moderate | High | Critical",
   "attack_path": [
     { "phase": "string", "step": "string", "mitre": "string" },
     { "phase": "string", "step": "string", "mitre": "string" },
@@ -196,6 +228,7 @@ Return valid JSON only in this exact structure:
     "nist_csf_2_0": ["string", "string", "string"],
     "iso_iec_27002_2022": ["string", "string", "string"]
   },
+  "evidence_to_request": ["string", "string", "string", "string", "string", "string"],
   "detection_opportunity": "string",
   "assurance_questions": ["string", "string", "string", "string"],
   "assurance_insight": "string",
@@ -212,21 +245,32 @@ Currency: ${currency || "GBP"}
 
 Requirements:
 - Use UK English.
-- Make the scenario realistic and suitable for executive and board discussion.
+- Make the simulation specific to the selected scenario, environment, sector and critical service.
 - Keep the summary to 2 sentences maximum.
 - Keep board_brief to 2 to 3 sentences.
-- board_risk_statement must be a single sentence suitable for a board slide.
+- board_risk_statement must be a single sentence suitable for a board slide headline.
+- severity must be one of: Low, Moderate, High, Critical.
 - Each attack_path item must include:
   - phase: one of "Initial Access", "Privilege Misuse", "Lateral Movement", "Impact"
   - step: one sentence only
   - mitre: a realistic MITRE ATT&CK technique ID
-- weak_signals must be observable indicators from logs, telemetry, IAM, API activity, cloud audit logs, endpoint events or service monitoring.
-- financial_impact must be plausible and use the selected currency.
-- key_controls must be practical and relevant.
-- control_framework_references must include only realistic mappings.
-- For CIS Controls v8 use entries like "CIS 5", "CIS 6", "CIS 8", "CIS 13".
-- For NIST CSF 2.0 use entries like "PR.AA", "DE.CM", "ID.RA", "RS.AN", "GV.RM".
-- For ISO/IEC 27002:2022 use entries like "5.15", "5.16", "5.18", "8.15", "8.16", "8.23".
+- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM activity, API activity, endpoint telemetry, audit logs or network traffic.
+- Business impact must be plausible and concrete.
+- Financial impact must be plausible for the selected sector, service and organisation size and use the selected currency.
+- downtime_hours should be a short realistic range such as "12-24" or "36-72".
+- Priority actions must be practical first-response actions.
+- Key controls must be preventative or detective controls that would materially reduce risk.
+- control_framework_references must include realistic mappings only.
+- For CIS Controls v8 use entries such as "CIS 5", "CIS 6", "CIS 8", "CIS 13".
+- For NIST CSF 2.0 use entries such as "PR.AA", "DE.CM", "ID.RA", "RS.AN", "GV.RM".
+- For ISO/IEC 27002:2022 use entries such as "5.15", "5.16", "5.18", "8.15", "8.16", "8.23".
+- evidence_to_request must list practical evidence items an assurance or audit team would request after this scenario.
+- Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
+- Assurance questions must be practical questions a security, audit or technology leadership team should ask.
+- Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
+- Confidence rating must be one of: Low, Moderate, High.
+- Conclusion must provide a concise closing statement suitable for the end of the report.
+- Avoid generic wording and repeated phrases.
 - Do not include markdown.
 - Do not include code fences.
 `;
