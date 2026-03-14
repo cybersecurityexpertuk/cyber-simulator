@@ -786,88 +786,124 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   if (shareBtn) {
-    shareBtn.addEventListener("click", function (e) {
-      e.preventDefault();
+  shareBtn.addEventListener("click", function (e) {
+    e.preventDefault();
 
-      if (simulationRunning) return;
+    if (simulationRunning) return;
 
-      if (!latestSimulationData) {
-        showError("No simulation to share. Please run a simulation first.");
-        return;
-      }
+    if (!latestSimulationData) {
+      showError("No simulation to share. Please run a simulation first.");
+      return;
+    }
 
-      shareBtn.disabled = true;
-      shareBtn.textContent = "Creating link...";
+    shareBtn.disabled = true;
+    shareBtn.textContent = "Creating link...";
 
-      fetch(SHARE_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          report_id: latestReportId,
-          data: latestSimulationData
-        })
-      })
-        .then(function (response) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () {
+      controller.abort();
+    }, 20000);
+
+    fetch(SHARE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        report_id: latestReportId,
+        data: latestSimulationData
+      }),
+      signal: controller.signal
+    })
+      .then(function (response) {
+        clearTimeout(timeoutId);
+
+        return response.text().then(function (text) {
+          var parsed = {};
+
+          try {
+            parsed = text ? JSON.parse(text) : {};
+          } catch (err) {}
+
           if (!response.ok) {
-            return response.text().then(function (text) {
-              throw new Error(text || "Failed to create share link.");
-            });
-          }
-          return response.json();
-        })
-        .then(function (result) {
-          if (!result || !result.blob_url) {
-            throw new Error("Share service did not return a valid link.");
+            throw new Error(
+              parsed.error ||
+              parsed.message ||
+              text ||
+              "Failed to create share link."
+            );
           }
 
-          var shareUrl =
-            window.location.origin +
-            "/sim-report?url=" +
-            encodeURIComponent(result.blob_url);
-
-          if (navigator.clipboard) {
-            return navigator.clipboard.writeText(shareUrl).then(function () {
-              if (simFeedback) {
-                simFeedback.innerHTML =
-                  '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br><a href="' +
-                  escapeHtml(shareUrl) +
-                  '" target="_blank" rel="noopener noreferrer">' +
-                  escapeHtml(shareUrl) +
-                  "</a></div>";
-              }
-            }).catch(function () {
-              if (simFeedback) {
-                simFeedback.innerHTML =
-                  '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
-                  escapeHtml(shareUrl) +
-                  '" target="_blank" rel="noopener noreferrer">' +
-                  escapeHtml(shareUrl) +
-                  "</a></div>";
-              }
-            });
-          }
-
-          if (simFeedback) {
-            simFeedback.innerHTML =
-              '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
-              escapeHtml(shareUrl) +
-              '" target="_blank" rel="noopener noreferrer">' +
-              escapeHtml(shareUrl) +
-              "</a></div>";
-          }
-        })
-        .catch(function (error) {
-          showError(error.message || "Unknown error");
-        })
-        .finally(function () {
-          shareBtn.disabled = false;
-          shareBtn.textContent = "Create Share Link";
-          updateActionButtons();
+          return parsed;
         });
-    });
-  }
+      })
+      .then(function (result) {
+        console.log("Share API result:", result);
+
+        var blobUrl =
+          result.blob_url ||
+          result.url ||
+          result.share_url ||
+          result.blobUrl ||
+          "";
+
+        if (!blobUrl) {
+          throw new Error("Share service did not return a blob URL.");
+        }
+
+        var shareUrl =
+          window.location.origin +
+          "/sim-report?url=" +
+          encodeURIComponent(blobUrl);
+
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(shareUrl).then(function () {
+            if (simFeedback) {
+              simFeedback.innerHTML =
+                '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br><a href="' +
+                escapeHtml(shareUrl) +
+                '" target="_blank" rel="noopener noreferrer">' +
+                escapeHtml(shareUrl) +
+                "</a></div>";
+            }
+          }).catch(function () {
+            if (simFeedback) {
+              simFeedback.innerHTML =
+                '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
+                escapeHtml(shareUrl) +
+                '" target="_blank" rel="noopener noreferrer">' +
+                escapeHtml(shareUrl) +
+                "</a></div>";
+            }
+          });
+        }
+
+        if (simFeedback) {
+          simFeedback.innerHTML =
+            '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
+            escapeHtml(shareUrl) +
+            '" target="_blank" rel="noopener noreferrer">' +
+            escapeHtml(shareUrl) +
+            "</a></div>";
+        }
+      })
+      .catch(function (error) {
+        console.error("Share link failed:", error);
+
+        if (error.name === "AbortError") {
+          showError("The share request timed out.");
+        } else {
+          showError(error.message || "Unknown error");
+        }
+      })
+      .finally(function () {
+        clearTimeout(timeoutId);
+        shareBtn.disabled = false;
+        shareBtn.textContent = "Create Share Link";
+        updateActionButtons();
+      });
+  });
+}
 
   if (runAnotherBtn) {
     runAnotherBtn.addEventListener("click", function (e) {
