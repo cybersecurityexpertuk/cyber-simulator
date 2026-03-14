@@ -83,6 +83,7 @@ Your task is to produce a realistic scenario that is:
 Return valid JSON only in this exact structure:
 {
   "summary": "string",
+  "board_risk_statement": "string",
   "board_brief": "string",
   "attack_path": [
     { "phase": "string", "step": "string", "mitre": "string" },
@@ -103,7 +104,11 @@ Return valid JSON only in this exact structure:
   },
   "priority_actions": ["string", "string", "string", "string"],
   "key_controls": ["string", "string", "string", "string"],
-  "control_references": ["string", "string", "string"],
+  "control_references": {
+    "cis_controls_v8": ["string", "string", "string"],
+    "nist_csf_2": ["string", "string", "string"],
+    "iso_27002_2022": ["string", "string", "string"]
+  },
   "detection_opportunity": "string",
   "assurance_questions": ["string", "string", "string", "string"],
   "assurance_insight": "string",
@@ -121,7 +126,9 @@ Currency: ${currency || "GBP"}
 Requirements:
 - Make the scenario specific to the selected environment, sector and critical service.
 - Write as if this could happen in a real organisation within the next 12 months.
+- Use UK English.
 - Keep the summary to 2 sentences maximum.
+- board_risk_statement must be a single plain-English sentence suitable for a board slide headline.
 - The board_brief must be 2 to 3 sentences in plain executive language with no jargon overload.
 - attack_path must reflect a realistic sequence from initial compromise to business impact.
 - Each attack_path item must include:
@@ -133,9 +140,13 @@ Requirements:
 - financial_impact must be plausible for the selected sector and organisation size.
 - Use the selected currency throughout financial_impact.
 - total_estimated_impact must be a concise range or total figure suitable for a board slide.
+- downtime_hours must be a realistic range such as "12-24 hours" or "36-72 hours".
 - priority_actions must be practical first-response actions.
 - key_controls must be the most relevant preventive or detective controls.
-- control_references should refer to recognised control concepts such as IAM, logging, monitoring, segmentation, third-party governance, backup, change control, privileged access, API security.
+- control_references must map the scenario to recognised control frameworks.
+- cis_controls_v8 should contain realistic CIS Controls v8 references such as "CIS Control 5", "CIS Control 6", "CIS Control 8", "CIS Control 13".
+- nist_csf_2 should contain realistic NIST CSF 2.0 category references such as "PR.AA", "DE.CM", "ID.RA", "RS.AN", "GV.RM".
+- iso_27002_2022 should contain realistic ISO/IEC 27002:2022 references such as "5.15", "5.16", "5.18", "8.15", "8.16".
 - detection_opportunity must explain where the incident chain could have been detected earlier.
 - assurance_questions must be practical questions leadership should ask.
 - assurance_insight must explain what this reveals about control effectiveness, evidence gaps and assurance maturity.
