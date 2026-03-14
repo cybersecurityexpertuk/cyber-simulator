@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "openai": "^4.56.0"
+    "openai": "^4.56.0",
+    "@vercel/blob": "^1.0.0"
   }
 }
