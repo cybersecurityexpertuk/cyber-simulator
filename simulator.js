@@ -695,7 +695,7 @@ document.addEventListener("DOMContentLoaded", function () {
         critical_service: criticalServiceEl.value || "",
         organisation_size: organisationSizeEl.value || "",
         currency: currencyEl.value || "",
-        turnstile_token: turnstileTokenEl ? turnstileTokenEl.value : ""
+        turnstileToken: turnstileTokenEl ? turnstileTokenEl.value : ""
       };
 
       fetch(SIM_ENDPOINT, {
