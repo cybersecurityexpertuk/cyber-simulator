@@ -25,7 +25,7 @@ async function verifyTurnstileToken(token, remoteip) {
   });
 
   const data = await response.json();
-  return !!data.success;
+  return data.success;
 }
 
 export default async function handler(req, res) {
