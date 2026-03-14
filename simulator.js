@@ -41,42 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
     "T1530": "Data from Cloud Storage Object"
   };
 
-  function getTurnstileToken() {
-  var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
-
-  if (cfTokenEl && cfTokenEl.value) {
-    return cfTokenEl.value;
-  }
-
-  if (turnstileTokenEl && turnstileTokenEl.value) {
-    return turnstileTokenEl.value;
-  }
-
-  return "";
-}
-
-function isVerified() {
-  return !!getTurnstileToken();
-}
-  
-function getTurnstileToken() {
-  var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
-
-  if (cfTokenEl && cfTokenEl.value) {
-    return cfTokenEl.value;
-  }
-
-  if (turnstileTokenEl && turnstileTokenEl.value) {
-    return turnstileTokenEl.value;
-  }
-
-  return "";
-}
-
-function isVerified() {
-  return !!getTurnstileToken();
-}
-
   function safeText(value, fallback) {
     if (fallback === undefined) fallback = "-";
     if (value === null || value === undefined || value === "") return fallback;
@@ -102,6 +66,41 @@ function isVerified() {
     return option ? option.text : String(selectEl.value);
   }
 
+  function getTurnstileToken() {
+    var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
+
+    if (cfTokenEl && cfTokenEl.value) {
+      return cfTokenEl.value;
+    }
+
+    if (turnstileTokenEl && turnstileTokenEl.value) {
+      return turnstileTokenEl.value;
+    }
+
+    return "";
+  }
+
+  function isVerified() {
+    return !!getTurnstileToken();
+  }
+
+  function resetTurnstileWidget() {
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = "";
+    }
+
+    var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
+    if (cfTokenEl) {
+      cfTokenEl.value = "";
+    }
+
+    if (window.turnstile && document.getElementById("sim-turnstile")) {
+      try {
+        window.turnstile.reset(document.getElementById("sim-turnstile"));
+      } catch (e) {}
+    }
+  }
+
   function listToHtml(list, mode) {
     if (!list || !list.length) return "";
     var html = "";
@@ -112,9 +111,13 @@ function isVerified() {
 
       if (mode === "attack-path" && typeof item === "object") {
         var mitreId = safeText(item.mitre, "");
-        var mitreUrl = mitreId ? "https://attack.mitre.org/techniques/" + encodeURIComponent(mitreId) + "/" : "";
+        var mitreUrl = mitreId
+          ? "https://attack.mitre.org/techniques/" + encodeURIComponent(mitreId) + "/"
+          : "";
         var mitreName = mitreNames[mitreId] || "";
-        var badgeText = mitreId ? ("MITRE " + mitreId + (mitreName ? " · " + mitreName : "")) : "";
+        var badgeText = mitreId
+          ? "MITRE " + mitreId + (mitreName ? " · " + mitreName : "")
+          : "";
 
         html +=
           "<li><strong>" +
@@ -122,7 +125,11 @@ function isVerified() {
           ":</strong> " +
           escapeHtml(safeText(item.step, "")) +
           (mitreId
-            ? " <a class='sim-mitre-tag' href='" + mitreUrl + "' target='_blank' rel='noopener noreferrer'>" + escapeHtml(badgeText) + "</a>"
+            ? " <a class='sim-mitre-tag' href='" +
+              mitreUrl +
+              "' target='_blank' rel='noopener noreferrer'>" +
+              escapeHtml(badgeText) +
+              "</a>"
             : "") +
           "</li>";
       } else {
@@ -194,21 +201,51 @@ function isVerified() {
     clearInterval(simProgressInterval);
     simProgressValue = 8;
     createStatusBox();
-    updateProgress(1, "Running simulation...", "Validating scenario inputs and preparing the simulation request.", 8);
+    updateProgress(
+      1,
+      "Running simulation...",
+      "Validating scenario inputs and preparing the simulation request.",
+      8
+    );
 
     simProgressInterval = setInterval(function () {
       simProgressValue += Math.random() * 6;
 
       if (simProgressValue < 22) {
-        updateProgress(1, "Running simulation...", "Validating scenario inputs and preparing the simulation request.", simProgressValue);
+        updateProgress(
+          1,
+          "Running simulation...",
+          "Validating scenario inputs and preparing the simulation request.",
+          simProgressValue
+        );
       } else if (simProgressValue < 44) {
-        updateProgress(2, "Building attack path...", "Mapping realistic attacker steps and control breakdowns.", simProgressValue);
+        updateProgress(
+          2,
+          "Building attack path...",
+          "Mapping realistic attacker steps and control breakdowns.",
+          simProgressValue
+        );
       } else if (simProgressValue < 64) {
-        updateProgress(3, "Estimating business impact...", "Assessing likely operational, financial and regulatory consequences.", simProgressValue);
+        updateProgress(
+          3,
+          "Estimating business impact...",
+          "Assessing likely operational, financial and regulatory consequences.",
+          simProgressValue
+        );
       } else if (simProgressValue < 84) {
-        updateProgress(4, "Generating assurance insights...", "Producing control-focused observations and assurance questions.", simProgressValue);
+        updateProgress(
+          4,
+          "Generating assurance insights...",
+          "Producing control-focused observations and assurance questions.",
+          simProgressValue
+        );
       } else {
-        updateProgress(5, "Formatting report...", "Preparing the browser summary and print-friendly report.", Math.min(simProgressValue, 96));
+        updateProgress(
+          5,
+          "Formatting report...",
+          "Preparing the browser summary and print-friendly report.",
+          Math.min(simProgressValue, 96)
+        );
       }
 
       if (simProgressValue >= 96) {
@@ -223,7 +260,8 @@ function isVerified() {
 
     setTimeout(function () {
       if (simFeedback) {
-        simFeedback.innerHTML = '<div class="sim-success"><strong>Simulation complete.</strong> Summary and report generated successfully.</div>';
+        simFeedback.innerHTML =
+          '<div class="sim-success"><strong>Simulation complete.</strong> Summary and report generated successfully.</div>';
       }
     }, 500);
   }
@@ -252,7 +290,13 @@ function isVerified() {
   function deriveSeverity(data) {
     if (data.severity) return data.severity;
     var impact = (buildImpactKpi(data) || "").toLowerCase();
-    if (impact.indexOf("critical") !== -1 || impact.indexOf("10m") !== -1 || impact.indexOf("6.5m") !== -1) return "Critical";
+    if (
+      impact.indexOf("critical") !== -1 ||
+      impact.indexOf("10m") !== -1 ||
+      impact.indexOf("6.5m") !== -1
+    ) {
+      return "Critical";
+    }
     if (impact.indexOf("m") !== -1) return "High";
     return "Moderate";
   }
@@ -281,7 +325,11 @@ function isVerified() {
     }
 
     if (!iso.length) {
-      iso = ["5.15 Access control", "8.15 Logging", "5.23 Information security for use of cloud services"];
+      iso = [
+        "5.15 Access control",
+        "8.15 Logging",
+        "5.23 Information security for use of cloud services"
+      ];
     }
 
     return {
@@ -296,7 +344,10 @@ function isVerified() {
       return data.evidence_to_request;
     }
 
-    var service = criticalServiceText && criticalServiceText !== "-" ? criticalServiceText.toLowerCase() : "affected service";
+    var service =
+      criticalServiceText && criticalServiceText !== "-"
+        ? criticalServiceText.toLowerCase()
+        : "affected service";
 
     return [
       "Privileged access review evidence for " + service + " and any administrator roles in scope",
@@ -538,36 +589,30 @@ function isVerified() {
 
   function resetFormAndResults() {
     if (simForm) simForm.reset();
-    if (turnstileTokenEl) turnstileTokenEl.value = "";
     if (simFeedback) simFeedback.innerHTML = "";
     latestSimulationData = null;
     latestReportId = null;
     clearResults();
+    resetTurnstileWidget();
+  }
 
-    if (window.turnstile && document.getElementById("sim-turnstile")) {
-      try {
-        window.turnstile.reset(document.getElementById("sim-turnstile"));
-      } catch (e) {}
+  window.onSimTurnstileSuccess = function (token) {
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = token || "";
     }
-  }
+  };
 
-window.onSimTurnstileSuccess = function (token) {
-  if (turnstileTokenEl) {
-    turnstileTokenEl.value = token || "";
-  }
-};
+  window.onSimTurnstileExpired = function () {
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = "";
+    }
+  };
 
-window.onSimTurnstileExpired = function () {
-  if (turnstileTokenEl) {
-    turnstileTokenEl.value = "";
-  }
-};
-
-window.onSimTurnstileError = function () {
-  if (turnstileTokenEl) {
-    turnstileTokenEl.value = "";
-  }
-};
+  window.onSimTurnstileError = function () {
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = "";
+    }
+  };
 
   window.applyPreset = function (preset) {
     if (!scenarioEl || !environmentEl || !sectorEl || !criticalServiceEl || !organisationSizeEl || !currencyEl) return;
@@ -609,7 +654,8 @@ window.onSimTurnstileError = function () {
     }
 
     if (simFeedback) {
-      simFeedback.innerHTML = '<div class="sim-success"><strong>Preset applied.</strong> Review the fields, complete verification, then run the simulation.</div>';
+      simFeedback.innerHTML =
+        '<div class="sim-success"><strong>Preset applied.</strong> Review the fields, complete verification, then run the simulation.</div>';
     }
   };
 
@@ -627,18 +673,21 @@ window.onSimTurnstileError = function () {
 
       if (!navigator.clipboard) {
         if (simFeedback) {
-          simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+          simFeedback.innerHTML =
+            '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
         }
         return;
       }
 
       navigator.clipboard.writeText(text).then(function () {
         if (simFeedback) {
-          simFeedback.innerHTML = '<div class="sim-success"><strong>Copied.</strong> Executive summary copied to clipboard.</div>';
+          simFeedback.innerHTML =
+            '<div class="sim-success"><strong>Copied.</strong> Executive summary copied to clipboard.</div>';
         }
       }).catch(function () {
         if (simFeedback) {
-          simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+          simFeedback.innerHTML =
+            '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
         }
       });
     });
@@ -656,7 +705,8 @@ window.onSimTurnstileError = function () {
     shareBtn.addEventListener("click", function () {
       if (!latestSimulationData) {
         if (simFeedback) {
-          simFeedback.innerHTML = '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
+          simFeedback.innerHTML =
+            '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
         }
         return;
       }
@@ -726,13 +776,13 @@ window.onSimTurnstileError = function () {
     });
   }
 
-var runAnotherBtn = document.getElementById("sim-run-another-top");
-if (runAnotherBtn) {
-  runAnotherBtn.addEventListener("click", function () {
-    resetFormAndResults();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-}
+  var runAnotherBtn = document.getElementById("sim-run-another-top");
+  if (runAnotherBtn) {
+    runAnotherBtn.addEventListener("click", function () {
+      resetFormAndResults();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 
   if (simForm) {
     simForm.addEventListener("submit", function (e) {
@@ -752,18 +802,16 @@ if (runAnotherBtn) {
       simSubmit.disabled = true;
       startFakeProgress();
 
-var payload = {
-  scenario: scenarioEl.value,
-  environment: environmentEl.value,
-  sector: sectorEl.value,
-  critical_service: criticalServiceEl.value || "",
-  organisation_size: organisationSizeEl.value || "",
-  currency: currencyEl.value || "",
-  turnstileToken: getTurnstileToken()
-};
+      var payload = {
+        scenario: scenarioEl.value,
+        environment: environmentEl.value,
+        sector: sectorEl.value,
+        critical_service: criticalServiceEl.value || "",
+        organisation_size: organisationSizeEl.value || "",
+        currency: currencyEl.value || "",
+        turnstileToken: getTurnstileToken()
+      };
 
-console.log("Turnstile token being sent:", getTurnstileToken());
-      
       fetch(SIM_ENDPOINT, {
         method: "POST",
         headers: {
@@ -779,6 +827,18 @@ console.log("Turnstile token being sent:", getTurnstileToken());
           }
           return response.json();
         })
+        .then(function (data) {
+          stopFakeProgressSuccess();
+          renderReport(data);
+          resetTurnstileWidget();
+        })
+        .catch(function (error) {
+          showError(error.message || "Something went wrong while generating the simulation.");
+          resetTurnstileWidget();
+        })
+        .finally(function () {
+          simSubmit.disabled = false;
+        });
     });
   }
 });
