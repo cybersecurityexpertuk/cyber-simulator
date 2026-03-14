@@ -8,10 +8,6 @@ async function verifyTurnstileToken(token, remoteip) {
   const secret = process.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET;
 
   if (!secret || !token) {
-    console.error("Turnstile missing secret or token", {
-      hasSecret: !!secret,
-      hasToken: !!token
-    });
     return false;
   }
 
@@ -29,9 +25,6 @@ async function verifyTurnstileToken(token, remoteip) {
   });
 
   const data = await response.json();
-
-  console.log("Turnstile siteverify response:", data);
-
   return !!data.success;
 }
 
@@ -196,15 +189,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const remoteip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
-    const tokenToVerify = turnstileToken || turnstile_token || "";
+    const remoteip =
+      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
 
-    console.log("Turnstile token received length:", tokenToVerify ? tokenToVerify.length : 0);
-    console.log("Turnstile token source:", turnstileToken ? "turnstileToken" : (turnstile_token ? "turnstile_token" : "none"));
-
+    const tokenToVerify = turnstileToken || turnstile_token;
     const isHuman = await verifyTurnstileToken(tokenToVerify, remoteip);
-
-    console.log("Turnstile verification result:", isHuman);
 
     if (!isHuman) {
       return res.status(403).json({ error: "Turnstile verification failed" });
@@ -257,41 +246,6 @@ Sector: ${sector}
 Critical service: ${critical_service || "Not provided"}
 Organisation size: ${organisation_size || "Not provided"}
 Currency: ${currency || "GBP"}
-
-Requirements:
-- Use UK English.
-- Make the simulation specific to the selected scenario, environment, sector and critical service.
-- Write as if this could plausibly happen in a real organisation in the next 12 months.
-- Keep the summary to 2 sentences maximum.
-- Keep board_brief to 2 to 3 sentences.
-- board_risk_statement must be a single sentence suitable for a board slide headline.
-- severity must be one of: Low, Moderate, High, Critical.
-- Each attack_path item must include:
-  - phase: one of "Initial Access", "Privilege Misuse", "Lateral Movement", "Impact"
-  - step: one sentence only
-  - mitre: a realistic MITRE ATT&CK technique ID
-- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM activity, API activity, endpoint telemetry, audit logs or network traffic.
-- Business impact must be plausible and concrete.
-- Financial impact must be plausible for the selected sector, service and organisation size and use the selected currency.
-- downtime_hours should be a short realistic range such as "12-24" or "36-72".
-- Priority actions must be practical first-response actions.
-- Key controls must be preventative or detective controls that would materially reduce risk.
-- control_framework_references must include realistic mappings only.
-- For CIS Controls v8 use entries such as "CIS 5", "CIS 6", "CIS 8", "CIS 13".
-- For NIST CSF 2.0 use entries such as "PR.AA", "DE.CM", "ID.RA", "RS.AN", "GV.RM".
-- For ISO/IEC 27002:2022 use entries such as "5.15", "5.16", "5.18", "8.15", "8.16", "8.23".
-- evidence_to_request must be highly specific to the chosen scenario, environment, sector and critical service.
-- evidence_to_request must list the actual evidence a second-line reviewer, assurance function or internal audit team would ask to see after this scenario.
-- evidence_to_request should favour artefacts such as exported logs, policy evidence, screenshots, configuration extracts, alert rules, review records, incident timelines and test evidence.
-- Avoid generic items like "security documents" unless made specific.
-- Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
-- Assurance questions must be practical questions a security, audit or technology leadership team should ask.
-- Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
-- Confidence rating must be one of: Low, Moderate, High.
-- Conclusion must provide a concise closing statement suitable for the end of the report.
-- Avoid generic wording and repeated phrases.
-- Do not include markdown.
-- Do not include code fences.
 `;
 
     const response = await client.responses.create({
