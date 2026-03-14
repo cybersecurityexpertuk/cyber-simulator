@@ -5,13 +5,8 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
   try {
     const body = req.body || {};
@@ -23,10 +18,8 @@ export default async function handler(req, res) {
       data: body.data || {}
     };
 
-    const pathname = `shared-simulations/${reportId}.json`;
-
     const blob = await put(
-      pathname,
+      `shared-simulations/${reportId}.json`,
       JSON.stringify(payload, null, 2),
       {
         access: "public",
@@ -39,7 +32,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       report_id: reportId,
-      pathname: pathname,
       blob_url: blob.url
     });
   } catch (error) {
