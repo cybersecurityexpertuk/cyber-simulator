@@ -1,8 +1,10 @@
 {
-  "name": "cyber-simulator-api",
+  "name": "cyber-simulator",
   "version": "1.0.0",
+  "description": "Cyber control failure simulator",
   "type": "module",
   "dependencies": {
+    "@vercel/blob": "^0.27.0",
     "openai": "^4.56.0"
   }
 }
