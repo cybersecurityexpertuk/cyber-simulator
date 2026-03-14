@@ -134,13 +134,13 @@ document.addEventListener("DOMContentLoaded", function () {
           escapeHtml(safeText(item.phase, "")) +
           ":</strong> " +
           escapeHtml(safeText(item.step, "")) +
-          (mitreId
-            ? " <a class='sim-mitre-tag' href='" +
-              mitreUrl +
-              "' target='_blank' rel='noopener noreferrer'>" +
-              escapeHtml(badgeText) +
-              "</a>"
-            : "") +
+         (mitreId
+  ? "<br><a class='sim-mitre-tag' href='" +
+    mitreUrl +
+    "' target='_blank' rel='noopener noreferrer'>" +
+    escapeHtml(badgeText) +
+    "</a>"
+  : "") +
           "</li>";
       } else {
         html += "<li>" + escapeHtml(item) + "</li>";
