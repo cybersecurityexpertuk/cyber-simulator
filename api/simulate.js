@@ -32,8 +32,12 @@ function ensureArray(value, fallback) {
   return Array.isArray(value) && value.length ? value : fallback;
 }
 
-function normaliseOutput(parsed, selectedCurrency) {
+function normaliseOutput(parsed, selectedCurrency, scenario, environment, sector, criticalService) {
   const safeCurrency = selectedCurrency || "GBP";
+  const scenarioText = scenario || "selected scenario";
+  const environmentText = environment || "selected environment";
+  const sectorText = sector || "selected sector";
+  const serviceText = criticalService || "affected service";
 
   const defaults = {
     summary: "A realistic cyber scenario has been generated based on the selected context, highlighting how weak or failed controls may escalate into operational disruption, financial loss and assurance concerns.",
@@ -95,11 +99,11 @@ function normaliseOutput(parsed, selectedCurrency) {
       iso_iec_27002_2022: ["5.15", "5.16", "8.15"]
     },
     evidence_to_request: [
-      "Privileged access review evidence for the affected service and administrator roles",
-      "IAM and audit log extracts covering sign-in activity, policy changes and administrative actions",
+      `Privileged access review evidence for ${serviceText}`,
+      `Audit and activity logs covering ${scenarioText} indicators in the ${environmentText}`,
       "MFA and conditional access policy evidence, including exported settings or screenshots",
-      "Service account, API key or token inventory relevant to the affected environment",
-      "Incident timeline and containment records for the affected scenario",
+      "Administrative change evidence, including IAM, API or control-plane configuration history",
+      `Incident timeline and containment records for the ${sectorText} scenario under review`,
       "SIEM or alert rule evidence showing how anomalous activity would be detected"
     ],
     detection_opportunity: "Earlier detection would likely have depended on stronger monitoring of identity, audit, API and abnormal access patterns.",
@@ -246,6 +250,7 @@ Currency: ${currency || "GBP"}
 Requirements:
 - Use UK English.
 - Make the simulation specific to the selected scenario, environment, sector and critical service.
+- Write as if this could plausibly happen in a real organisation in the next 12 months.
 - Keep the summary to 2 sentences maximum.
 - Keep board_brief to 2 to 3 sentences.
 - board_risk_statement must be a single sentence suitable for a board slide headline.
@@ -264,7 +269,10 @@ Requirements:
 - For CIS Controls v8 use entries such as "CIS 5", "CIS 6", "CIS 8", "CIS 13".
 - For NIST CSF 2.0 use entries such as "PR.AA", "DE.CM", "ID.RA", "RS.AN", "GV.RM".
 - For ISO/IEC 27002:2022 use entries such as "5.15", "5.16", "5.18", "8.15", "8.16", "8.23".
-- evidence_to_request must list practical evidence items an assurance or audit team would request after this scenario.
+- evidence_to_request must be highly specific to the chosen scenario, environment, sector and critical service.
+- evidence_to_request must list the actual evidence a second-line reviewer, assurance function or internal audit team would ask to see after this scenario.
+- evidence_to_request should favour artefacts such as exported logs, policy evidence, screenshots, configuration extracts, alert rules, review records, incident timelines and test evidence.
+- Avoid generic items like "security documents" unless made specific.
 - Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
 - Assurance questions must be practical questions a security, audit or technology leadership team should ask.
 - Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
@@ -293,7 +301,15 @@ Requirements:
       });
     }
 
-    const finalOutput = normaliseOutput(parsed, currency || "GBP");
+    const finalOutput = normaliseOutput(
+      parsed,
+      currency || "GBP",
+      scenario,
+      environment,
+      sector,
+      critical_service
+    );
+
     return res.status(200).json(finalOutput);
   } catch (error) {
     console.error("Simulation error:", error);
