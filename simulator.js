@@ -726,12 +726,13 @@ window.onSimTurnstileError = function () {
     });
   }
 
-  var runAnotherBtn = document.getElementById("sim-run-another-top");
-  if (runAnotherBtn) {
-    runAnotherBtn.addEventListener("click", function () {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-  }
+var runAnotherBtn = document.getElementById("sim-run-another-top");
+if (runAnotherBtn) {
+  runAnotherBtn.addEventListener("click", function () {
+    resetFormAndResults();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
 
   if (simForm) {
     simForm.addEventListener("submit", function (e) {
@@ -778,16 +779,6 @@ console.log("Turnstile token being sent:", getTurnstileToken());
           }
           return response.json();
         })
-        .then(function (data) {
-          stopFakeProgressSuccess();
-          renderReport(data);
-        })
-        .catch(function (error) {
-          showError(error.message || "Something went wrong while generating the simulation.");
-        })
-        .finally(function () {
-          simSubmit.disabled = false;
-        });
     });
   }
 });
