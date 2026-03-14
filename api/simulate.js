@@ -5,7 +5,7 @@ const client = new OpenAI({
 });
 
 async function verifyTurnstileToken(token, remoteip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const secret = process.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET;
 
   if (!secret || !token) {
     return false;
@@ -19,12 +19,17 @@ async function verifyTurnstileToken(token, remoteip) {
     formData.append("remoteip", remoteip);
   }
 
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: formData
-  });
+  const response = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      body: formData
+    }
+  );
 
   const data = await response.json();
+  console.log("Turnstile response:", data);
+
   return data.success;
 }
 
@@ -49,6 +54,7 @@ export default async function handler(req, res) {
       critical_service,
       organisation_size,
       currency,
+      turnstile_token,
       turnstileToken
     } = req.body || {};
 
@@ -59,14 +65,15 @@ export default async function handler(req, res) {
     const remoteip =
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
 
-    const isHuman = await verifyTurnstileToken(turnstileToken, remoteip);
+    const tokenToVerify = turnstileToken || turnstile_token;
+    const isHuman = await verifyTurnstileToken(tokenToVerify, remoteip);
 
     if (!isHuman) {
       return res.status(403).json({ error: "Turnstile verification failed" });
     }
 
     const prompt = `
-You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a website visitor.
+You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a professional website tool.
 
 Return valid JSON only in this exact structure:
 {
@@ -101,14 +108,14 @@ Requirements:
 - Keep the summary to 2 sentences maximum.
 - Keep each attack path step to 1 sentence only.
 - Include a realistic MITRE ATT&CK technique ID where appropriate, for example T1566, T1078, T1021, T1003, T1530, T1105.
-- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM activity, API activity, endpoint telemetry, audit logs or network traffic.
+- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM changes, endpoint alerts, cloud audit logs, or anomalous network activity.
 - Business impact must be plausible and concrete.
 - Where financial impact is included, express it in the selected currency and make it plausible for the selected sector, service and organisation size.
 - Priority actions must be practical first-response actions.
 - Key controls must be preventative or detective controls that would materially reduce risk.
-- Control references should include recognised best-practice control references such as CIS Controls v8, NIST CSF 2.0 categories, or ISO/IEC 27002 controls where relevant.
+- Control references should include recognised best-practice control references such as CIS Controls v8, NIST CSF 2.0 categories, IAM, logging, monitoring, segmentation, backup, third-party governance.
 - Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
-- Assurance questions must be practical questions a security, audit or technology leadership team should ask.
+- Assurance questions must be practical questions that a security, audit or technology leadership team should ask.
 - Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
 - Confidence rating must be one of: Low, Moderate, High.
 - Conclusion must provide a concise closing statement suitable for the end of the report.
