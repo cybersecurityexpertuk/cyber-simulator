@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       turnstileToken
     } = req.body || {};
 
-    if (!scenario || !environment) {
+    if (!scenario || !environment || !sector) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -73,19 +73,34 @@ export default async function handler(req, res) {
     }
 
     const prompt = `
-You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a professional website tool.
+You are a senior cybersecurity assurance specialist creating a realistic control failure simulation for a professional website tool used by CISOs, security leaders, internal audit, risk teams and boards.
+
+Your task is to produce a realistic scenario that is:
+1. operationally plausible,
+2. grounded in control failure and detection weakness,
+3. suitable for executive and board discussion.
 
 Return valid JSON only in this exact structure:
 {
   "summary": "string",
+  "board_brief": "string",
   "attack_path": [
-    { "step": "string", "mitre": "string" },
-    { "step": "string", "mitre": "string" },
-    { "step": "string", "mitre": "string" },
-    { "step": "string", "mitre": "string" }
+    { "phase": "string", "step": "string", "mitre": "string" },
+    { "phase": "string", "step": "string", "mitre": "string" },
+    { "phase": "string", "step": "string", "mitre": "string" },
+    { "phase": "string", "step": "string", "mitre": "string" }
   ],
   "weak_signals": ["string", "string", "string"],
   "business_impact": "string",
+  "financial_impact": {
+    "currency": "string",
+    "downtime_hours": "string",
+    "response_cost": "string",
+    "lost_revenue": "string",
+    "regulatory_exposure": "string",
+    "customer_remediation_cost": "string",
+    "total_estimated_impact": "string"
+  },
   "priority_actions": ["string", "string", "string", "string"],
   "key_controls": ["string", "string", "string", "string"],
   "control_references": ["string", "string", "string"],
@@ -104,22 +119,29 @@ Organisation size: ${organisation_size || "Not provided"}
 Currency: ${currency || "GBP"}
 
 Requirements:
-- Make the simulation specific to the selected scenario, environment, sector and critical service.
+- Make the scenario specific to the selected environment, sector and critical service.
+- Write as if this could happen in a real organisation within the next 12 months.
 - Keep the summary to 2 sentences maximum.
-- Keep each attack path step to 1 sentence only.
-- Include a realistic MITRE ATT&CK technique ID where appropriate, for example T1566, T1078, T1021, T1003, T1530, T1105.
-- Weak signals must be observable by security or IT teams and should reference likely telemetry such as authentication logs, IAM changes, endpoint alerts, cloud audit logs, or anomalous network activity.
-- Business impact must be plausible and concrete.
-- Where financial impact is included, express it in the selected currency and make it plausible for the selected sector, service and organisation size.
-- Priority actions must be practical first-response actions.
-- Key controls must be preventative or detective controls that would materially reduce risk.
-- Control references should include recognised best-practice control references such as CIS Controls v8, NIST CSF 2.0 categories, IAM, logging, monitoring, segmentation, backup, third-party governance.
-- Detection opportunity must explain where the organisation could realistically have detected the incident chain earlier.
-- Assurance questions must be practical questions that a security, audit or technology leadership team should ask.
-- Assurance insight must explain what this scenario reveals about control effectiveness and assurance.
-- Confidence rating must be one of: Low, Moderate, High.
-- Conclusion must provide a concise closing statement suitable for the end of the report.
-- Avoid generic wording and repeated phrases.
+- The board_brief must be 2 to 3 sentences in plain executive language with no jargon overload.
+- attack_path must reflect a realistic sequence from initial compromise to business impact.
+- Each attack_path item must include:
+  - phase: one of "Initial Access", "Privilege Misuse", "Lateral Movement", "Impact"
+  - step: one sentence only
+  - mitre: a realistic MITRE ATT&CK technique ID
+- weak_signals must be observable indicators from logs, telemetry, IAM, API activity, cloud audit logs, endpoint events or service monitoring.
+- business_impact must describe operational disruption, customer impact, regulatory consequences and reputational effect.
+- financial_impact must be plausible for the selected sector and organisation size.
+- Use the selected currency throughout financial_impact.
+- total_estimated_impact must be a concise range or total figure suitable for a board slide.
+- priority_actions must be practical first-response actions.
+- key_controls must be the most relevant preventive or detective controls.
+- control_references should refer to recognised control concepts such as IAM, logging, monitoring, segmentation, third-party governance, backup, change control, privileged access, API security.
+- detection_opportunity must explain where the incident chain could have been detected earlier.
+- assurance_questions must be practical questions leadership should ask.
+- assurance_insight must explain what this reveals about control effectiveness, evidence gaps and assurance maturity.
+- confidence_rating must be one of: Low, Moderate, High.
+- conclusion must be concise and suitable for the end of a board-ready report.
+- Avoid vague language, generic filler and repeated phrases.
 - Do not include markdown.
 - Do not include code fences.
 `;
