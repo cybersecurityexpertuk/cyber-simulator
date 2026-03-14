@@ -41,9 +41,23 @@ document.addEventListener("DOMContentLoaded", function () {
     "T1530": "Data from Cloud Storage Object"
   };
 
-  function isVerified() {
-    return !!(turnstileTokenEl && turnstileTokenEl.value);
+function getTurnstileToken() {
+  var cfTokenEl = document.querySelector('[name="cf-turnstile-response"]');
+
+  if (cfTokenEl && cfTokenEl.value) {
+    return cfTokenEl.value;
   }
+
+  if (turnstileTokenEl && turnstileTokenEl.value) {
+    return turnstileTokenEl.value;
+  }
+
+  return "";
+}
+
+function isVerified() {
+  return !!getTurnstileToken();
+}
 
   function safeText(value, fallback) {
     if (fallback === undefined) fallback = "-";
@@ -719,16 +733,17 @@ document.addEventListener("DOMContentLoaded", function () {
       simSubmit.disabled = true;
       startFakeProgress();
 
-      var payload = {
-        scenario: scenarioEl.value,
-        environment: environmentEl.value,
-        sector: sectorEl.value,
-        critical_service: criticalServiceEl.value || "",
-        organisation_size: organisationSizeEl.value || "",
-        currency: currencyEl.value || "",
-        turnstileToken: turnstileTokenEl ? turnstileTokenEl.value : ""
-      };
-
+var payload = {
+  scenario: scenarioEl.value,
+  environment: environmentEl.value,
+  sector: sectorEl.value,
+  critical_service: criticalServiceEl.value || "",
+  organisation_size: organisationSizeEl.value || "",
+  currency: currencyEl.value || "",
+  turnstileToken: getTurnstileToken()
+};
+console.log("Turnstile token being sent:", getTurnstileToken());
+      
       fetch(SIM_ENDPOINT, {
         method: "POST",
         headers: {
