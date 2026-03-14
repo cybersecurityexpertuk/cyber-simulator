@@ -115,13 +115,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function showError(message) {
     clearInterval(simProgressInterval);
-    simFeedback.innerHTML =
-      '<div class="sim-error"><strong>Unable to run simulation.</strong><br>' +
-      escapeHtml(message) +
-      "</div>";
+    if (simFeedback) {
+      simFeedback.innerHTML =
+        '<div class="sim-error"><strong>Unable to run simulation.</strong><br>' +
+        escapeHtml(message) +
+        "</div>";
+    }
   }
 
   function createStatusBox() {
+    if (!simFeedback) return;
+
     simFeedback.innerHTML =
       '<div class="sim-status">' +
       '<div><strong id="sim-status-title">Preparing simulation...</strong></div>' +
@@ -175,15 +179,20 @@ document.addEventListener("DOMContentLoaded", function () {
         updateProgress(5, "Formatting report...", "Preparing the browser summary and print-friendly report.", Math.min(simProgressValue, 96));
       }
 
-      if (simProgressValue >= 96) clearInterval(simProgressInterval);
+      if (simProgressValue >= 96) {
+        clearInterval(simProgressInterval);
+      }
     }, 1400);
   }
 
   function stopFakeProgressSuccess() {
     clearInterval(simProgressInterval);
     updateProgress(5, "Simulation complete", "Your summary and report are ready.", 100);
+
     setTimeout(function () {
-      simFeedback.innerHTML = '<div class="sim-success"><strong>Simulation complete.</strong> Summary and report generated successfully.</div>';
+      if (simFeedback) {
+        simFeedback.innerHTML = '<div class="sim-success"><strong>Simulation complete.</strong> Summary and report generated successfully.</div>';
+      }
     }, 500);
   }
 
@@ -511,15 +520,21 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   window.onSimTurnstileSuccess = function (token) {
-    if (turnstileTokenEl) turnstileTokenEl.value = token || "";
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = token || "";
+    }
   };
 
   window.onSimTurnstileExpired = function () {
-    if (turnstileTokenEl) turnstileTokenEl.value = "";
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = "";
+    }
   };
 
   window.onSimTurnstileError = function () {
-    if (turnstileTokenEl) turnstileTokenEl.value = "";
+    if (turnstileTokenEl) {
+      turnstileTokenEl.value = "";
+    }
   };
 
   window.applyPreset = function (preset) {
@@ -579,14 +594,20 @@ document.addEventListener("DOMContentLoaded", function () {
       var text = textEl ? textEl.textContent || "" : "";
 
       if (!navigator.clipboard) {
-        simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+        if (simFeedback) {
+          simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+        }
         return;
       }
 
       navigator.clipboard.writeText(text).then(function () {
-        simFeedback.innerHTML = '<div class="sim-success"><strong>Copied.</strong> Executive summary copied to clipboard.</div>';
+        if (simFeedback) {
+          simFeedback.innerHTML = '<div class="sim-success"><strong>Copied.</strong> Executive summary copied to clipboard.</div>';
+        }
       }).catch(function () {
-        simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+        if (simFeedback) {
+          simFeedback.innerHTML = '<div class="sim-error"><strong>Copy failed.</strong><br>Please copy the summary manually.</div>';
+        }
       });
     });
   }
@@ -602,7 +623,9 @@ document.addEventListener("DOMContentLoaded", function () {
   if (shareBtn) {
     shareBtn.addEventListener("click", function () {
       if (!latestSimulationData) {
-        simFeedback.innerHTML = '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
+        if (simFeedback) {
+          simFeedback.innerHTML = '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
+        }
         return;
       }
 
@@ -634,28 +657,36 @@ document.addEventListener("DOMContentLoaded", function () {
 
           if (navigator.clipboard) {
             navigator.clipboard.writeText(shareUrl).then(function () {
-              simFeedback.innerHTML =
-                '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br>' +
-                escapeHtml(shareUrl) +
-                "</div>";
+              if (simFeedback) {
+                simFeedback.innerHTML =
+                  '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br>' +
+                  escapeHtml(shareUrl) +
+                  "</div>";
+              }
             }).catch(function () {
+              if (simFeedback) {
+                simFeedback.innerHTML =
+                  '<div class="sim-success"><strong>Share link created.</strong><br>' +
+                  escapeHtml(shareUrl) +
+                  "</div>";
+              }
+            });
+          } else {
+            if (simFeedback) {
               simFeedback.innerHTML =
                 '<div class="sim-success"><strong>Share link created.</strong><br>' +
                 escapeHtml(shareUrl) +
                 "</div>";
-            });
-          } else {
-            simFeedback.innerHTML =
-              '<div class="sim-success"><strong>Share link created.</strong><br>' +
-              escapeHtml(shareUrl) +
-              "</div>";
+            }
           }
         })
         .catch(function (error) {
-          simFeedback.innerHTML =
-            '<div class="sim-error"><strong>Share link failed.</strong><br>' +
-            escapeHtml(error.message || "Unknown error") +
-            "</div>";
+          if (simFeedback) {
+            simFeedback.innerHTML =
+              '<div class="sim-error"><strong>Share link failed.</strong><br>' +
+              escapeHtml(error.message || "Unknown error") +
+              "</div>";
+          }
         })
         .finally(function () {
           shareBtn.disabled = false;
