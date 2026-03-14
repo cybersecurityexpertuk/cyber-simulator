@@ -2,24 +2,17 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
 
   try {
-    const { id } = req.query || {};
+    const { url } = req.query || {};
 
-    if (!id) {
-      return res.status(400).json({ error: "Missing id" });
+    if (!url) {
+      return res.status(400).json({ error: "Missing url" });
     }
 
-    const blobUrl = `${process.env.BLOB_BASE_URL || ""}/shared-simulations/${id}.json`;
-
-    const response = await fetch(blobUrl);
+    const response = await fetch(url);
 
     if (!response.ok) {
       return res.status(404).json({ error: "Simulation not found" });
