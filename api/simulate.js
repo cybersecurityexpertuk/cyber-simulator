@@ -8,6 +8,10 @@ async function verifyTurnstileToken(token, remoteip) {
   const secret = process.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET;
 
   if (!secret || !token) {
+    console.error("Turnstile missing secret or token", {
+      hasSecret: !!secret,
+      hasToken: !!token
+    });
     return false;
   }
 
@@ -25,6 +29,9 @@ async function verifyTurnstileToken(token, remoteip) {
   });
 
   const data = await response.json();
+
+  console.log("Turnstile siteverify response:", data);
+
   return !!data.success;
 }
 
@@ -189,11 +196,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const remoteip =
-      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
+    const remoteip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || "";
+    const tokenToVerify = turnstileToken || turnstile_token || "";
 
-    const tokenToVerify = turnstileToken || turnstile_token;
+    console.log("Turnstile token received length:", tokenToVerify ? tokenToVerify.length : 0);
+    console.log("Turnstile token source:", turnstileToken ? "turnstileToken" : (turnstile_token ? "turnstile_token" : "none"));
+
     const isHuman = await verifyTurnstileToken(tokenToVerify, remoteip);
+
+    console.log("Turnstile verification result:", isHuman);
 
     if (!isHuman) {
       return res.status(403).json({ error: "Turnstile verification failed" });
