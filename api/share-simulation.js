@@ -5,17 +5,26 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     const body = req.body || {};
     const reportId = body.report_id || ("CCFS-" + Date.now());
 
+    if (!body.data) {
+      return res.status(400).json({ error: "Missing simulation data" });
+    }
+
     const payload = {
       created_at: new Date().toISOString(),
       report_id: reportId,
-      data: body.data || {}
+      data: body.data
     };
 
     const blob = await put(
@@ -36,6 +45,10 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("share-simulation error:", error);
-    return res.status(500).json({ error: "Failed to save simulation" });
+
+    return res.status(500).json({
+      error: error?.message || "Failed to save simulation",
+      details: String(error)
+    });
   }
 }
