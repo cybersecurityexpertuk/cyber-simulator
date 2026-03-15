@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       `shared-simulations/${reportId}.json`,
       JSON.stringify(payload, null, 2),
       {
-        access: "public",
+        access: "private",
         contentType: "application/json",
         addRandomSuffix: false,
         allowOverwrite: true
