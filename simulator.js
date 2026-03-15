@@ -871,7 +871,9 @@ document.addEventListener("DOMContentLoaded", function () {
             throw new Error("Share service did not return a blob URL.");
           }
 
-          var shareUrl = blobUrl;
+          var shareUrl =
+  "https://www.cybersecurityexpert.co.uk/sim-report?url=" +
+  encodeURIComponent(blobUrl);
 
           if (navigator.clipboard && window.isSecureContext) {
             return navigator.clipboard.writeText(shareUrl).then(function () {
