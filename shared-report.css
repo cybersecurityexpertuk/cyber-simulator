@@ -1,0 +1,41 @@
+<link rel="stylesheet" href="https://cyber-simulator-eight.vercel.app/shared-report.css">
+
+<div class="shared-wrap">
+  <div class="shared-card">
+    <div class="shared-logo-wrap">
+      <img
+        class="shared-logo"
+        src="https://cdn.prod.website-files.com/69931c3d987f4b7486be3e14/6993698f71254fe8743784fe_provable_header_logo2.png"
+        alt="Provable Cyber Resilience"
+      >
+    </div>
+
+    <div class="shared-brand">Cybersecurity Expert</div>
+    <div class="shared-brand-sub">Provable Cyber Resilience<br>cybersecurityexpert.co.uk</div>
+    <div class="shared-rule"></div>
+
+    <h1 class="shared-title">Cyber Control Failure Impact Report</h1>
+    <p class="shared-subtitle">
+      Evidence-led cybersecurity assurance and measurable control effectiveness.
+      This shared report is designed for review, discussion, and onward sharing.
+    </p>
+
+    <div id="shared-sharebar" class="shared-sharebar" style="display:none;">
+      <div class="shared-sharebar-label">Share this report</div>
+      <button id="shared-copy-url" class="shared-share-btn primary" type="button">Copy URL</button>
+      <button id="shared-native-share" class="shared-share-btn" type="button" style="display:none;">Share</button>
+      <a id="shared-email-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">Email</a>
+      <a id="shared-linkedin-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a id="shared-x-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">X</a>
+      <a id="shared-facebook-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">Facebook</a>
+      <a id="shared-whatsapp-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <div id="shared-share-feedback" class="shared-share-feedback"></div>
+    </div>
+
+    <div id="shared-report-status" class="shared-status">Loading shared report...</div>
+    <div id="shared-report-content"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cyber-simulator-eight.vercel.app/shared-report.js"></script>
