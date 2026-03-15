@@ -55,6 +55,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing or invalid simulation data" });
     }
 
+    if (!process.env.PUBLIC_BLOB_READ_WRITE_TOKEN) {
+      return res.status(500).json({ error: "Missing PUBLIC_BLOB_READ_WRITE_TOKEN" });
+    }
+
     const payload = {
       created_at: new Date().toISOString(),
       report_id: reportId,
@@ -80,7 +84,7 @@ export default async function handler(req, res) {
         contentType: "application/json",
         addRandomSuffix: false,
         allowOverwrite: false,
-        token: process.env.PUBLIC.BLOB_READ_WRITE_TOKEN || process.env.PUBLIC_BLOB_READ_WRITE_TOKEN
+        token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN
       }
     );
 
