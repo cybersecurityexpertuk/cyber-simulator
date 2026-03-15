@@ -851,10 +851,7 @@ document.addEventListener("DOMContentLoaded", function () {
           throw new Error("Share service did not return a blob URL.");
         }
 
-        var shareUrl =
-          window.location.origin +
-          "/sim-report?url=" +
-          encodeURIComponent(blobUrl);
+var shareUrl = blobUrl;
 
         if (navigator.clipboard && window.isSecureContext) {
           return navigator.clipboard.writeText(shareUrl).then(function () {
