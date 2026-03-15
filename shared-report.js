@@ -505,7 +505,7 @@
 
       '<div class="shared-footer-cta">' +
         '<div class="shared-footer-cta-inner">' +
-          '<div class="shared-footer-kicker">Explore the full simulator</div>' +
+          '<div class="shared-footer-kicker">Explore the Cyber Control Failure Simulator</div>' +
           '<h3 class="shared-footer-title">Generate your own cyber control failure scenario</h3>' +
           '<p class="shared-footer-copy">Run a new simulation, test a different failure path, and create a shareable executive-ready report.</p>' +
           '<div class="shared-footer-actions">' +
