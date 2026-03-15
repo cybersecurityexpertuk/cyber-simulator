@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var simSubmit = document.getElementById("sim-submit");
   var simReset = document.getElementById("sim-reset");
   var simFeedback = document.getElementById("sim-feedback");
-
+var shareResultEl = document.getElementById("sim-share-result");
   var scenarioEl = document.getElementById("scenario");
   var environmentEl = document.getElementById("environment");
   var sectorEl = document.getElementById("sector");
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var latestSimulationData = null;
   var latestReportId = null;
-var shareResultEl = document.getElementById("sim-share-result");
+
   var simProgressInterval = null;
   var simProgressValue = 8;
   var simulationRunning = false;
