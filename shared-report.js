@@ -384,7 +384,7 @@
           '<p><span class="shared-meta-label">Sector:</span> ' + escapeHtml(safeText(data.sector_text)) + "</p>" +
           '<p><span class="shared-meta-label">Critical Service:</span> ' + escapeHtml(safeText(data.critical_service_text)) + "</p>" +
           '<p><span class="shared-meta-label">Organisation Size:</span> ' + escapeHtml(safeText(data.organisation_size_text)) + "</p>" +
-          '<p><span class="shared-meta-label">Currency:</span> ' + escapeHtml(safeText(data.currency_text)) + "</p>' +
+          '<p><span class="shared-meta-label">Currency:</span> ' + escapeHtml(safeText(data.currency_text)) + "</p>" +
         "</div>" +
       "</div>" +
 
