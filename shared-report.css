@@ -1,41 +1,706 @@
-<link rel="stylesheet" href="https://cyber-simulator-eight.vercel.app/shared-report.css">
+.shared-wrap {
+  width: 100%;
+  max-width: 1240px;
+  margin: 32px auto 56px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  color: #0f172a;
+}
 
-<div class="shared-wrap">
-  <div class="shared-card">
-    <div class="shared-logo-wrap">
-      <img
-        class="shared-logo"
-        src="https://cdn.prod.website-files.com/69931c3d987f4b7486be3e14/6993698f71254fe8743784fe_provable_header_logo2.png"
-        alt="Provable Cyber Resilience"
-      >
-    </div>
+.shared-card {
+  background: #ffffff;
+  border: 1px solid #dbe2ea;
+  border-radius: 18px;
+  padding: 28px;
+  box-sizing: border-box;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
 
-    <div class="shared-brand">Cybersecurity Expert</div>
-    <div class="shared-brand-sub">Provable Cyber Resilience<br>cybersecurityexpert.co.uk</div>
-    <div class="shared-rule"></div>
+.shared-logo-wrap {
+  margin-bottom: 14px;
+}
 
-    <h1 class="shared-title">Cyber Control Failure Impact Report</h1>
-    <p class="shared-subtitle">
-      Evidence-led cybersecurity assurance and measurable control effectiveness.
-      This shared report is designed for review, discussion, and onward sharing.
-    </p>
+.shared-logo {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
 
-    <div id="shared-sharebar" class="shared-sharebar" style="display:none;">
-      <div class="shared-sharebar-label">Share this report</div>
-      <button id="shared-copy-url" class="shared-share-btn primary" type="button">Copy URL</button>
-      <button id="shared-native-share" class="shared-share-btn" type="button" style="display:none;">Share</button>
-      <a id="shared-email-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">Email</a>
-      <a id="shared-linkedin-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      <a id="shared-x-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">X</a>
-      <a id="shared-facebook-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">Facebook</a>
-      <a id="shared-whatsapp-link" class="shared-share-btn" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-      <div id="shared-share-feedback" class="shared-share-feedback"></div>
-    </div>
+.shared-brand {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
 
-    <div id="shared-report-status" class="shared-status">Loading shared report...</div>
-    <div id="shared-report-content"></div>
-  </div>
-</div>
+.shared-brand-sub {
+  font-size: 14px;
+  color: #475569;
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cyber-simulator-eight.vercel.app/shared-report.js"></script>
+.shared-rule {
+  height: 2px;
+  background: #1147d9;
+  border-radius: 999px;
+  margin: 12px 0 22px;
+}
+
+.shared-title {
+  font-size: 38px;
+  line-height: 1.08;
+  font-weight: 900;
+  color: #1147d9;
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+}
+
+.shared-subtitle {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #475569;
+  margin: 0 0 22px;
+  max-width: 860px;
+}
+
+.shared-sharebar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 16px;
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.shared-sharebar-label {
+  width: 100%;
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.shared-share-btn {
+  appearance: none;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+}
+
+.shared-share-btn:hover {
+  border-color: #1147d9;
+  color: #1147d9;
+  background: #eff6ff;
+}
+
+.shared-share-btn.primary {
+  background: #1147d9;
+  color: #ffffff;
+  border-color: #1147d9;
+}
+
+.shared-share-btn.primary:hover {
+  background: #0d3bb6;
+  border-color: #0d3bb6;
+  color: #ffffff;
+}
+
+.shared-share-feedback {
+  width: 100%;
+  display: none;
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #166534;
+}
+
+.shared-status,
+.shared-error {
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 18px;
+}
+
+.shared-status {
+  background: #f8fafc;
+  border: 1px solid #dbe2ea;
+  color: #334155;
+}
+
+.shared-error {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+}
+
+.shared-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 18px;
+}
+
+.shared-summary-card {
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  padding: 16px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.shared-summary-label {
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.shared-summary-value {
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.shared-summary-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.shared-meta {
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fbfdff;
+  margin-bottom: 20px;
+}
+
+.shared-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+}
+
+.shared-meta p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: #1e293b;
+}
+
+.shared-meta-label {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.shared-risk {
+  border-left: 4px solid #1147d9;
+  background: #f8fbff;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #0f172a;
+  margin-bottom: 18px;
+}
+
+.shared-viz-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 18px;
+  margin: 0 0 18px;
+}
+
+.shared-viz-card {
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 18px;
+  min-width: 0;
+}
+
+.shared-viz-card h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1147d9;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.shared-viz-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #1e293b;
+}
+
+.shared-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+}
+
+.shared-chart-wrap canvas {
+  width: 100% !important;
+  height: 280px !important;
+}
+
+.shared-meter-label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.shared-meter-label-row .shared-meter-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.shared-meter-label-row .shared-meter-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1147d9;
+}
+
+.shared-meter-track {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.shared-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #93c5fd 0%, #1147d9 100%);
+}
+
+.shared-meter-note {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.shared-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-timeline-step {
+  position: relative;
+  flex: 1 1 180px;
+  min-width: 160px;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 14px;
+}
+
+.shared-timeline-step:after {
+  content: "→";
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.shared-timeline-step:last-child:after {
+  display: none;
+}
+
+.shared-timeline-phase {
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.shared-timeline-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.shared-timeline-mitre {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.shared-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.shared-box {
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shared-box.featured {
+  border: 1px solid #cfe0ff;
+  background: #f8fbff;
+}
+
+.shared-box.wide {
+  grid-column: 1 / -1;
+}
+
+.shared-box h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1147d9;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.shared-box p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-weight: 400;
+}
+
+.shared-list {
+  margin: 0;
+  padding-left: 20px;
+  min-width: 0;
+}
+
+.shared-list li {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-weight: 400;
+}
+
+.shared-list li strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.shared-badge {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.shared-badge.critical {
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.shared-badge.high {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.shared-badge.moderate {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.shared-badge.low {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.shared-kpi {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.shared-kpi-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.shared-drift-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: stretch;
+}
+
+.shared-drift-item {
+  padding: 14px 10px;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #f8fbff;
+  text-align: center;
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.shared-drift-item span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.shared-drift-item strong {
+  font-size: 16px;
+  line-height: 1.2;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.shared-drift-total {
+  margin: 6px 0 0;
+  color: #1e293b;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.shared-risk-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.shared-risk-pill.critical {
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.shared-risk-pill.high {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.shared-risk-pill.moderate {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.shared-risk-pill.low {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.shared-table-wrap {
+  overflow: auto;
+}
+
+.shared-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.shared-table th,
+.shared-table td {
+  padding: 12px;
+  border: 1px solid #dbe2ea;
+  text-align: left;
+  vertical-align: top;
+}
+
+.shared-table th {
+  background: #f8fbff;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.shared-disclaimer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+  margin-top: 28px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #64748b;
+}
+
+.shared-disclaimer strong {
+  color: #334155;
+  font-weight: 800;
+}
+
+.shared-hidden-copy {
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 991px) {
+  .shared-summary-strip,
+  .shared-grid,
+  .shared-viz-grid,
+  .shared-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shared-drift-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shared-box.wide {
+    grid-column: auto;
+  }
+
+  .shared-title {
+    font-size: 30px;
+  }
+
+  .shared-timeline-step:after {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .shared-wrap {
+    padding: 0 16px;
+    margin: 20px auto 40px;
+  }
+
+  .shared-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .shared-title {
+    font-size: 28px;
+  }
+
+  .shared-subtitle {
+    font-size: 15px;
+  }
+
+  .shared-kpi,
+  .shared-summary-value {
+    font-size: 24px;
+  }
+
+  .shared-share-btn {
+    flex: 1 1 calc(50% - 10px);
+  }
+
+  .shared-chart-wrap {
+    min-height: 240px;
+  }
+
+  .shared-chart-wrap canvas {
+    height: 240px !important;
+  }
+}
+
+@media print {
+  .shared-wrap {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .shared-card {
+    box-shadow: none;
+    border: 1px solid #dbe2ea;
+    padding: 20px;
+  }
+
+  .shared-sharebar,
+  #shared-report-status {
+    display: none !important;
+  }
+
+  .shared-box,
+  .shared-meta,
+  .shared-risk,
+  .shared-viz-card,
+  .shared-summary-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .shared-title {
+    font-size: 30px;
+  }
+}
