@@ -360,18 +360,18 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(share.pageUrl)
             .then(function () {
-              showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+              showShareFeedback("Report URL copied. Ready to share on LinkedIn or send directly.", false);
             })
             .catch(function () {
               if (fallbackCopyText(share.pageUrl)) {
-                showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+                showShareFeedback("Report URL copied. Ready to share on LinkedIn or send directly.", false);
               } else {
                 showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
               }
             });
         } else {
           if (fallbackCopyText(share.pageUrl)) {
-            showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+            showShareFeedback("Report URL copied. Ready to share on LinkedIn or send directly.", false);
           } else {
             showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
           }
@@ -388,6 +388,8 @@
           url: share.pageUrl
         }).catch(function () {});
       };
+    } else if (nativeBtn) {
+      nativeBtn.style.display = "none";
     }
 
     shareBar.style.display = "flex";
@@ -451,7 +453,7 @@
           "<h3>Confidence Indicator</h3>" +
           '<div class="shared-meter-label-row">' +
             '<div class="shared-meter-title">Simulation confidence</div>' +
-            '<div class="shared-meter-value">' + escapeHtml(safeText(data.confidence)) + " • " + confidencePercent + "%</div>" +
+            '<div class="shared-meter-value">' + escapeHtml(safeText(data.confidence)) + " • " + confidencePercent + "%</div>' +
           "</div>" +
           '<div class="shared-meter-track"><div class="shared-meter-fill" style="width:' + confidencePercent + '%;"></div></div>' +
           '<div class="shared-meter-note">This indicates how strongly the generated scenario aligns to the selected context, known attack patterns, and the structured assumptions used in the simulation.</div>' +
@@ -504,14 +506,11 @@
       "</div>" +
 
       '<div class="shared-footer-cta">' +
-        '<div class="shared-footer-cta-inner">' +
-          '<div class="shared-footer-kicker">Explore the Cyber Control Failure Simulator</div>' +
-          '<h3 class="shared-footer-title">Generate your own cyber control failure scenario</h3>' +
-          '<p class="shared-footer-copy">Run a new simulation, test a different failure path, and create a shareable executive-ready report.</p>' +
-          '<div class="shared-footer-actions">' +
-            '<a class="shared-footer-btn primary" href="' + escapeHtml(share.simulatorUrl) + '">Open Simulator</a>' +
-            '<a class="shared-footer-btn" href="' + escapeHtml(share.labsUrl) + '">Visit AI Labs</a>' +
-          "</div>" +
+        '<div class="shared-footer-cta-title">Generate your own cyber control failure scenario</div>' +
+        '<p class="shared-footer-cta-text">Run a new simulation, test a different failure path, and create a shareable executive-ready report.</p>' +
+        '<div class="shared-footer-cta-actions">' +
+          '<a class="shared-share-btn primary" href="' + escapeHtml(share.simulatorUrl) + '">Open Simulator</a>' +
+          '<a class="shared-share-btn" href="' + escapeHtml(share.labsUrl) + '">Visit AI Labs</a>' +
         "</div>" +
       "</div>" +
 
@@ -543,7 +542,9 @@
     }
 
     if (financialChartInstance) {
-      financialChartInstance.destroy();
+      try {
+        financialChartInstance.destroy();
+      } catch (e) {}
     }
 
     financialChartInstance = new Chart(canvas, {
@@ -608,8 +609,10 @@
   var url = params.get("url");
 
   if (!url) {
-    statusEl.className = "shared-error";
-    statusEl.innerHTML = "<strong>Missing report link.</strong><br>No report URL was provided.";
+    if (statusEl) {
+      statusEl.className = "shared-error";
+      statusEl.innerHTML = "<strong>Missing report link.</strong><br>No report URL was provided.";
+    }
     return;
   }
 
