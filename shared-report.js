@@ -42,7 +42,7 @@
 
   function parseMoney(value) {
     var raw = safeText(value, "");
-    if (!raw) return 0;
+    if (!raw || raw === "-") return 0;
     var cleaned = raw.replace(/[^0-9.-]/g, "");
     var parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
@@ -50,7 +50,7 @@
 
   function parseHourEstimate(value) {
     var text = safeText(value, "").toLowerCase().trim();
-    if (!text) return 0;
+    if (!text || text === "-") return 0;
 
     var rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
     if (rangeMatch) {
@@ -263,16 +263,17 @@
     var scenario = safeText(data.scenario_text, "Cyber incident");
     var environment = safeText(data.environment_text, "Production environment");
     var sector = safeText(data.sector_text, "Organisation");
+    var simulatorUrl = "https://www.cybersecurityexpert.co.uk/cybercontrolfailuresimulator";
+    var labsUrl = "https://www.cybersecurityexpert.co.uk/ai-labs";
     var siteName = "Cybersecurity Expert";
-    var siteUrl = "https://www.cybersecurityexpert.co.uk/";
     var pageTitle = "Cyber Control Failure Impact Report";
     var shortText =
       "Review this shared " +
       scenario.toLowerCase() +
       " simulation report from " +
       siteName +
-      ". Explore the Cyber Control Failure Simulator at " +
-      siteUrl;
+      ". Generate your own scenario at " +
+      simulatorUrl;
 
     var emailBody =
       "I wanted to share this Cyber Control Failure Impact Report with you.\n\n" +
@@ -280,13 +281,15 @@
       "Environment: " + environment + "\n" +
       "Sector: " + sector + "\n\n" +
       "View the report here:\n" + pageUrl + "\n\n" +
-      "Created using the Cyber Control Failure Simulator at Cybersecurity Expert:\n" +
-      siteUrl;
+      "Generate your own report here:\n" + simulatorUrl + "\n\n" +
+      "AI Labs:\n" + labsUrl;
 
     return {
       pageUrl: pageUrl,
       pageTitle: pageTitle,
       shareText: shortText,
+      simulatorUrl: simulatorUrl,
+      labsUrl: labsUrl,
       emailUrl:
         "mailto:?subject=" +
         encodeURIComponent(pageTitle + " | Cybersecurity Expert") +
@@ -346,35 +349,37 @@
 
     var share = getShareData(data);
 
-    emailLink.href = share.emailUrl;
-    linkedinLink.href = share.linkedinUrl;
-    xLink.href = share.xUrl;
-    facebookLink.href = share.facebookUrl;
-    whatsappLink.href = share.whatsappUrl;
+    if (emailLink) emailLink.href = share.emailUrl;
+    if (linkedinLink) linkedinLink.href = share.linkedinUrl;
+    if (xLink) xLink.href = share.xUrl;
+    if (facebookLink) facebookLink.href = share.facebookUrl;
+    if (whatsappLink) whatsappLink.href = share.whatsappUrl;
 
-    copyBtn.onclick = function () {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(share.pageUrl)
-          .then(function () {
-            showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
-          })
-          .catch(function () {
-            if (fallbackCopyText(share.pageUrl)) {
+    if (copyBtn) {
+      copyBtn.onclick = function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(share.pageUrl)
+            .then(function () {
               showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
-            } else {
-              showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
-            }
-          });
-      } else {
-        if (fallbackCopyText(share.pageUrl)) {
-          showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+            })
+            .catch(function () {
+              if (fallbackCopyText(share.pageUrl)) {
+                showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+              } else {
+                showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
+              }
+            });
         } else {
-          showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
+          if (fallbackCopyText(share.pageUrl)) {
+            showShareFeedback("Report URL copied. You can now share the report and point people back to Cybersecurity Expert.", false);
+          } else {
+            showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
+          }
         }
-      }
-    };
+      };
+    }
 
-    if (navigator.share) {
+    if (navigator.share && nativeBtn) {
       nativeBtn.style.display = "inline-flex";
       nativeBtn.onclick = function () {
         navigator.share({
@@ -394,10 +399,11 @@
 
     var financial = data.financial_impact || {};
     var confidencePercent = confidenceToPercent(data.confidence);
+    var share = getShareData(data);
 
     contentEl.innerHTML =
       '<div class="shared-summary-strip">' +
-        '<div class="shared-summary-card">' +
+        '<div class="shared-summary-card impact-card">' +
           '<div class="shared-summary-label">Estimated Impact</div>' +
           '<div class="shared-summary-value">' + escapeHtml(safeText(financial.total_estimated_impact)) + "</div>" +
           '<div class="shared-summary-sub">Combined estimated financial effect</div>' +
@@ -453,7 +459,7 @@
       "</div>" +
 
       '<div class="shared-viz-card" style="margin-bottom:18px;">' +
-        "<h3>Likely Attack Path</h3>" +
+        "<h3>Likely Attack Path Timeline</h3>" +
         buildTimelineHtml(data.attack_path) +
       "</div>" +
 
@@ -495,6 +501,18 @@
         '<div class="shared-box"><h3>Assurance Insight</h3>' + makeParagraph(data.assurance_insight) + "</div>" +
         '<div class="shared-box"><h3>Conclusion</h3>' + makeParagraph(data.conclusion) + "</div>" +
         '<div class="shared-box wide"><h3>Control Weakness Map</h3>' + buildWeaknessTable(data.control_weakness_map) + "</div>" +
+      "</div>" +
+
+      '<div class="shared-footer-cta">' +
+        '<div class="shared-footer-cta-inner">' +
+          '<div class="shared-footer-kicker">Explore the full simulator</div>' +
+          '<h3 class="shared-footer-title">Generate your own cyber control failure scenario</h3>' +
+          '<p class="shared-footer-copy">Run a new simulation, test a different failure path, and create a shareable executive-ready report.</p>' +
+          '<div class="shared-footer-actions">' +
+            '<a class="shared-footer-btn primary" href="' + escapeHtml(share.simulatorUrl) + '">Open Simulator</a>' +
+            '<a class="shared-footer-btn" href="' + escapeHtml(share.labsUrl) + '">Visit AI Labs</a>' +
+          "</div>" +
+        "</div>" +
       "</div>" +
 
       '<div class="shared-disclaimer">' +
