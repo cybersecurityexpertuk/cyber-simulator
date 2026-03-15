@@ -478,11 +478,23 @@
         '<div class="shared-box"><h3>Weak Signals and Early Indicators</h3>' + listHtml(data.weak_signals) + "</div>" +
         '<div class="shared-box"><h3>Detection Opportunity</h3>' + makeParagraph(data.detection_opportunity) + "</div>" +
         '<div class="shared-box wide"><h3>Key Assurance Questions</h3>' + listHtml(data.assurance_questions) + "</div>" +
+
+        '<div class="shared-box wide">' +
+          '<div class="shared-detail-grid">' +
+            '<div class="shared-detail-panel">' +
+              "<h4>Adversary Profile</h4>" +
+              buildAdversaryHtml(data.adversary_profile) +
+            "</div>" +
+            '<div class="shared-detail-panel">' +
+              "<h4>Estimated Drift-to-Fix</h4>" +
+              buildDriftHtml(data.drift_to_fix, data) +
+            "</div>" +
+          "</div>" +
+        "</div>" +
+
         '<div class="shared-box"><h3>Assurance Insight</h3>' + makeParagraph(data.assurance_insight) + "</div>" +
-        '<div class="shared-box"><h3>Adversary Profile</h3>' + buildAdversaryHtml(data.adversary_profile) + "</div>" +
-        '<div class="shared-box"><h3>Estimated Drift-to-Fix</h3>' + buildDriftHtml(data.drift_to_fix, data) + "</div>" +
+        '<div class="shared-box"><h3>Conclusion</h3>' + makeParagraph(data.conclusion) + "</div>" +
         '<div class="shared-box wide"><h3>Control Weakness Map</h3>' + buildWeaknessTable(data.control_weakness_map) + "</div>" +
-        '<div class="shared-box wide"><h3>Conclusion</h3>' + makeParagraph(data.conclusion) + "</div>" +
       "</div>" +
 
       '<div class="shared-disclaimer">' +
