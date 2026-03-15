@@ -545,9 +545,9 @@ document.addEventListener("DOMContentLoaded", function () {
       data.assurance_insight ||
       "This simulation suggests the greatest risk is not simply the initiating event, but the absence of fresh, corroborated evidence proving that key controls were working at the point of failure.";
 
-    var confidence = data.confidence_rating || "Moderate";
-    var severity = deriveSeverity(data);
-    var likelihood = data.likelihood || "Moderate";
+var confidence = data.confidence_rating || "Moderate";
+var severity = deriveSeverity(data);
+var likelihood = data.likelihood || "Moderate";
     var detectionOpportunity =
       data.detection_opportunity ||
       "Earlier detection would likely have depended on stronger monitoring of identity, audit, API and abnormal access patterns.";
@@ -591,12 +591,20 @@ document.addEventListener("DOMContentLoaded", function () {
       raw: data
     };
 
-    setTextById("sim-kpi-scenario", scenarioText);
-    setTextById("sim-kpi-environment", environmentText);
-    setTextById("sim-kpi-severity", severity);
-    setTextById("sim-kpi-confidence", confidence);
-    setTextById("sim-kpi-impact", buildImpactKpi(data));
-    setTextById("sim-kpi-likelihood", likelihood);
+setTextById("sim-kpi-scenario", scenarioText);
+setTextById("sim-kpi-environment", environmentText);
+setTextById("sim-kpi-severity", severity);
+setTextById("sim-kpi-confidence", confidence);
+setTextById("sim-kpi-impact", buildImpactKpi(data));
+setTextById("sim-kpi-likelihood", likelihood);
+
+var severityEl = document.getElementById("sim-kpi-severity");
+if (severityEl) {
+  severityEl.className = "sim-kpi-value";
+  if (severity === "Critical") severityEl.className += " severity-critical";
+  if (severity === "High") severityEl.className += " severity-high";
+  if (severity === "Moderate") severityEl.className += " severity-moderate";
+}
 
     setTextById("sim-board-risk-statement", boardRiskStatement);
     setTextById("sim-board-brief", boardBrief);
