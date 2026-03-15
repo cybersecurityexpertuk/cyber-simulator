@@ -1486,17 +1486,18 @@ document.addEventListener("DOMContentLoaded", function () {
           var blobUrl =
             result.blob_url ||
             result.url ||
-            result.share_url ||
             result.blobUrl ||
             "";
 
-          if (!blobUrl) {
-            throw new Error("Share service did not return a blob URL.");
-          }
-
           var shareUrl =
-            "https://www.cybersecurityexpert.co.uk/sim-report?url=" +
-            encodeURIComponent(blobUrl);
+            result.share_url ||
+            (blobUrl
+              ? "https://www.cybersecurityexpert.co.uk/sim-report?url=" + encodeURIComponent(blobUrl)
+              : "");
+
+          if (!shareUrl) {
+            throw new Error("Share service did not return a usable share URL.");
+          }
 
           if (navigator.clipboard && window.isSecureContext) {
             return navigator.clipboard.writeText(shareUrl).then(function () {
