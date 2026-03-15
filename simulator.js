@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var latestSimulationData = null;
   var latestReportId = null;
-
+var shareResultEl = document.getElementById("sim-share-result");
   var simProgressInterval = null;
   var simProgressValue = 8;
   var simulationRunning = false;
@@ -206,12 +206,14 @@ document.addEventListener("DOMContentLoaded", function () {
     clearInterval(simProgressInterval);
     setRunningState(false);
 
-    if (simFeedback) {
-      simFeedback.innerHTML =
-        '<div class="sim-error"><strong>Unable to run simulation.</strong><br>' +
-        escapeHtml(message) +
-        "</div>";
-    }
+if (shareResultEl) {
+  shareResultEl.innerHTML =
+    '<div class="sim-success"><strong>Share link created.</strong><br><a class="sim-share-link" href="' +
+    escapeHtml(shareUrl) +
+    '" target="_blank" rel="noopener noreferrer">' +
+    escapeHtml(shareUrl) +
+    "</a></div>";
+}
   }
 
   function showSuccess(message) {
