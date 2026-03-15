@@ -80,7 +80,7 @@ export default async function handler(req, res) {
         contentType: "application/json",
         addRandomSuffix: false,
         allowOverwrite: false,
-        token: process.env.BLOB_READ_WRITE_TOKEN || process.env.PUBLIC_BLOB_READ_WRITE_TOKEN
+        token: process.env.PUBLIC.BLOB_READ_WRITE_TOKEN || process.env.PUBLIC_BLOB_READ_WRITE_TOKEN
       }
     );
 
