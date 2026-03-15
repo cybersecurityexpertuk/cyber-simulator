@@ -27,16 +27,17 @@ export default async function handler(req, res) {
       data: body.data
     };
 
-    const blob = await put(
-      `shared-simulations/${reportId}.json`,
-      JSON.stringify(payload, null, 2),
-      {
-        access: "public",
-        contentType: "application/json",
-        addRandomSuffix: false,
-        allowOverwrite: true
-      }
-    );
+const blob = await put(
+  `shared-simulations/${reportId}.json`,
+  JSON.stringify(payload, null, 2),
+  {
+    access: "public",
+    contentType: "application/json",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN
+  }
+);
 
     return res.status(200).json({
       ok: true,
