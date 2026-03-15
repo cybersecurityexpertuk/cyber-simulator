@@ -31,6 +31,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var simProgressValue = 8;
   var simulationRunning = false;
 
+  var chartJsLoadPromise = null;
+  var financialChartInstance = null;
+
   var mitreNames = {
     "T1078": "Valid Accounts",
     "T1098": "Account Manipulation",
@@ -62,6 +65,11 @@ document.addEventListener("DOMContentLoaded", function () {
     return Array.isArray(value) ? value : [];
   }
 
+  function safeNumber(value, fallback) {
+    var parsed = parseFloat(value);
+    return isNaN(parsed) ? (fallback || 0) : parsed;
+  }
+
   function escapeHtml(value) {
     return safeText(value, "")
       .replace(/&/g, "&amp;")
@@ -74,7 +82,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function normaliseEncoding(value) {
     return safeText(value, "")
       .replace(/Â£/g, "£")
-      .replace(/â€”/g, "—");
+      .replace(/â€‘/g, "-")
+      .replace(/â€“/g, "–")
+      .replace(/â€”/g, "—")
+      .replace(/â€™/g, "’")
+      .replace(/â€œ/g, "“")
+      .replace(/â€\x9d/g, "”");
   }
 
   function getSelectedText(selectEl) {
@@ -118,6 +131,55 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function formatTitleCase(value) {
+    var text = safeText(value, "");
+    if (!text) return "-";
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function parseMoney(value) {
+    var text = normaliseEncoding(safeText(value, ""));
+    if (!text) return 0;
+    var cleaned = text.replace(/[^0-9.\-]/g, "");
+    var parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  function parseHourEstimate(value) {
+    var text = safeText(value, "").toLowerCase().trim();
+    if (!text) return 0;
+
+    var rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+      return (safeNumber(rangeMatch[1]) + safeNumber(rangeMatch[2])) / 2;
+    }
+
+    var numberMatch = text.match(/(\d+(?:\.\d+)?)/);
+    if (numberMatch) {
+      return safeNumber(numberMatch[1]);
+    }
+
+    if (text.indexOf("day") !== -1) return 24;
+    if (text.indexOf("week") !== -1) return 168;
+    return 0;
+  }
+
+  function formatHoursAsLabel(hours) {
+    hours = Math.max(0, Math.round(hours));
+    if (hours >= 48) {
+      var days = (hours / 24).toFixed(hours % 24 === 0 ? 0 : 1);
+      return days + " days";
+    }
+    return hours + " hours";
+  }
+
+  function getSeverityClass(value) {
+    var v = safeText(value, "").toLowerCase();
+    if (v === "critical") return "severity-critical";
+    if (v === "high") return "severity-high";
+    return "severity-moderate";
+  }
+
   function listToHtml(list, mode) {
     if (!list || !list.length) return "";
     var html = "";
@@ -149,6 +211,8 @@ document.addEventListener("DOMContentLoaded", function () {
               "</a>"
             : "") +
           "</li>";
+      } else if (typeof item === "object") {
+        html += "<li>" + escapeHtml(JSON.stringify(item)) + "</li>";
       } else {
         html += "<li>" + escapeHtml(item) + "</li>";
       }
@@ -167,6 +231,19 @@ document.addEventListener("DOMContentLoaded", function () {
   function clearResults() {
     if (summaryWrap) summaryWrap.classList.add("sim-hidden");
     if (reportWrap) reportWrap.classList.add("sim-hidden");
+
+    var dynamicSummary = document.getElementById("sim-dynamic-visuals");
+    var dynamicReport = document.getElementById("sim-dynamic-report-extras");
+
+    if (dynamicSummary) dynamicSummary.remove();
+    if (dynamicReport) dynamicReport.remove();
+
+    if (financialChartInstance) {
+      try {
+        financialChartInstance.destroy();
+      } catch (e) {}
+      financialChartInstance = null;
+    }
   }
 
   function clearShareResult() {
@@ -357,22 +434,68 @@ document.addEventListener("DOMContentLoaded", function () {
   function formatDowntime(value) {
     var text = safeText(value, "-");
     if (text === "-") return text;
-    if (text.toLowerCase().indexOf("hour") !== -1) return text;
+    if (text.toLowerCase().indexOf("hour") !== -1 || text.toLowerCase().indexOf("day") !== -1) return text;
     return text + " hours";
   }
 
   function deriveSeverity(data) {
-    if (data.severity) return data.severity;
+    if (data.severity) return formatTitleCase(data.severity);
+
     var impact = (buildImpactKpi(data) || "").toLowerCase();
+    var downtime = parseHourEstimate(data.financial_impact && data.financial_impact.downtime_hours);
+
     if (
       impact.indexOf("critical") !== -1 ||
       impact.indexOf("10m") !== -1 ||
-      impact.indexOf("6.5m") !== -1
+      impact.indexOf("6.5m") !== -1 ||
+      downtime >= 72
     ) {
       return "Critical";
     }
-    if (impact.indexOf("m") !== -1) return "High";
+
+    if (impact.indexOf("m") !== -1 || downtime >= 24) return "High";
     return "Moderate";
+  }
+
+  function deriveLikelihood(data, scenarioValue, environmentValue, sectorValue) {
+    if (data.likelihood) return formatTitleCase(data.likelihood);
+
+    if (
+      scenarioValue === "identity_compromise" ||
+      scenarioValue === "ransomware" ||
+      environmentValue === "cloud" ||
+      sectorValue === "financial_services"
+    ) {
+      return "High";
+    }
+
+    return "Moderate";
+  }
+
+  function deriveConfidence(data) {
+    var raw = data.confidence || data.confidence_rating || "";
+    if (raw) return formatTitleCase(raw);
+
+    var signalCount = safeArray(data.weak_signals).length;
+    var actionCount = safeArray(data.priority_actions).length;
+    var attackCount = safeArray(data.attack_path).length;
+
+    if (attackCount >= 4 && signalCount >= 3 && actionCount >= 3) return "High";
+    if (attackCount >= 2) return "Moderate";
+    return "Low";
+  }
+
+  function confidenceToPercent(confidence) {
+    var c = safeText(confidence, "").toLowerCase();
+
+    if (c === "critical") return 92;
+    if (c === "high") return 78;
+    if (c === "moderate" || c === "medium") return 60;
+    if (c === "low") return 38;
+
+    var parsed = parseFloat(c);
+    if (!isNaN(parsed)) return Math.max(0, Math.min(100, parsed));
+    return 60;
   }
 
   function deriveFrameworkReferences(data, scenarioText, environmentText) {
@@ -433,6 +556,165 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
   }
 
+  function deriveControlWeaknessMap(data, scenarioValue, environmentValue, sectorValue, serviceText) {
+    if (Array.isArray(data.control_weakness_map) && data.control_weakness_map.length) {
+      return data.control_weakness_map;
+    }
+
+    var weaknesses = [];
+
+    if (scenarioValue === "identity_compromise") {
+      weaknesses.push(
+        { domain: "Identity and Access Management", weakness: "Privileged or user identities could be misused due to weak MFA enforcement, poor access hygiene, or stale roles.", risk: "High" },
+        { domain: "Security Logging and Monitoring", weakness: "Anomalous authentication or privilege escalation may not be detected quickly enough.", risk: "High" },
+        { domain: "Third-Party and Supply Chain Risk", weakness: "Federated or externally connected identities may extend exposure.", risk: "Moderate" }
+      );
+    } else if (scenarioValue === "ransomware") {
+      weaknesses.push(
+        { domain: "Patch Management", weakness: "Exposure may persist due to delayed remediation or unsupported systems.", risk: "High" },
+        { domain: "Backup, Retention and Continuity Readiness", weakness: "Recovery confidence depends on tested, isolated and restorable backups.", risk: "Critical" },
+        { domain: "Network Security and Segmentation", weakness: "Weak segmentation may allow lateral movement into critical services.", risk: "High" }
+      );
+    } else if (scenarioValue === "third_party_breach") {
+      weaknesses.push(
+        { domain: "Third-Party and Supply Chain Risk", weakness: "Dependency assurance may be incomplete for externally hosted or managed services.", risk: "High" },
+        { domain: "Data Classification and Protection", weakness: "Data exposure risk depends on what the service can access or store.", risk: "High" },
+        { domain: "Incident Response and Recovery", weakness: "Containment may depend on third-party response time and transparency.", risk: "Moderate" }
+      );
+    } else if (scenarioValue === "insider_misuse") {
+      weaknesses.push(
+        { domain: "Identity and Access Management", weakness: "Access rights may exceed least privilege or remain active beyond operational need.", risk: "High" },
+        { domain: "Security Awareness and Human Behaviour Risk", weakness: "Escalation signals may be missed if behaviour, context or access anomalies are not reviewed.", risk: "Moderate" },
+        { domain: "Security Logging and Monitoring", weakness: "Detection may rely on audit trail quality and alert tuning.", risk: "High" }
+      );
+    } else {
+      weaknesses.push(
+        { domain: "Identity and Access Management", weakness: "Key access assumptions require independent validation.", risk: "High" },
+        { domain: "Security Logging and Monitoring", weakness: "Control effectiveness may be overstated if alert coverage is incomplete.", risk: "Moderate" },
+        { domain: "Incident Response and Recovery", weakness: "Containment and recovery readiness should be evidenced, not assumed.", risk: "Moderate" }
+      );
+    }
+
+    if (environmentValue === "cloud" || environmentValue === "saas_ecosystem") {
+      weaknesses.push({
+        domain: "Emerging Technology and Platform Risk",
+        weakness: "Configuration drift, token exposure, or weak tenant visibility could increase risk in cloud and SaaS environments affecting " + safeText(serviceText, "the service").toLowerCase() + ".",
+        risk: "High"
+      });
+    }
+
+    if (sectorValue === "healthcare" || sectorValue === "financial_services") {
+      weaknesses.push({
+        domain: "Governance, Risk, and Control Accountability",
+        weakness: "Operational and regulatory consequences increase the need for fresh, corroborated assurance evidence.",
+        risk: "High"
+      });
+    }
+
+    return weaknesses.slice(0, 5);
+  }
+
+  function deriveAdversaryProfile(data, scenarioValue, environmentValue, sectorValue) {
+    if (data.adversary_profile && typeof data.adversary_profile === "object") {
+      return data.adversary_profile;
+    }
+
+    var profile = {
+      likely_actor: "Financially motivated threat actor",
+      motivation: "Operational disruption, extortion, data theft, or credential reuse.",
+      typical_entry_methods: [],
+      typical_behaviours: []
+    };
+
+    if (scenarioValue === "identity_compromise") {
+      profile.likely_actor = "Credential-focused intrusion actor";
+      profile.motivation = "Account takeover, privilege abuse, fraud, or lateral movement into trusted systems.";
+      profile.typical_entry_methods = [
+        "Credential phishing or token theft",
+        "Password spraying or reuse of compromised credentials",
+        "Abuse of federated identities, service accounts, or stale privileged access"
+      ];
+      profile.typical_behaviours = [
+        "Privilege escalation following initial access",
+        "Use of trusted accounts to avoid early detection",
+        "Targeting identity systems, admin consoles, or cloud control planes"
+      ];
+    } else if (scenarioValue === "ransomware") {
+      profile.likely_actor = "Financially motivated ransomware affiliate";
+      profile.motivation = "Extortion through encryption, service disruption, and data exposure threats.";
+      profile.typical_entry_methods = [
+        "Exploitation of unpatched internet-facing systems",
+        "Credential access via phishing or infostealers",
+        "Reuse of privileged credentials or remote access tooling"
+      ];
+      profile.typical_behaviours = [
+        "Rapid lateral movement after foothold",
+        "Targeting backups, identity, and management tooling",
+        "Disruption of business-critical systems before encryption or extortion"
+      ];
+    } else if (scenarioValue === "third_party_breach") {
+      profile.likely_actor = "Supply-chain or dependency-focused intrusion actor";
+      profile.motivation = "Indirect access to data, services, customers, or trusted pathways.";
+      profile.typical_entry_methods = [
+        "Compromise of a supplier, SaaS integration, or external support relationship",
+        "Abuse of API connections or trust relationships",
+        "Credential access inherited from third-party compromise"
+      ];
+      profile.typical_behaviours = [
+        "Use of trusted service pathways",
+        "Targeting connected customer or transaction data",
+        "Stealthy persistence through external integrations"
+      ];
+    } else if (scenarioValue === "insider_misuse") {
+      profile.likely_actor = "Insider or trusted-user abuse case";
+      profile.motivation = "Misuse of legitimate access, policy circumvention, or unauthorised extraction.";
+      profile.typical_entry_methods = [
+        "Use of legitimate access already granted",
+        "Abuse of privileged rights or over-broad access",
+        "Use of business-approved tools for unauthorised actions"
+      ];
+      profile.typical_behaviours = [
+        "Actions appear normal unless context is reviewed",
+        "Sensitive data access outside expected patterns",
+        "Gradual misuse that evades point-in-time assurance"
+      ];
+    }
+
+    if (environmentValue === "cloud" || environmentValue === "saas_ecosystem") {
+      profile.typical_behaviours.push("Preference for cloud identities, API abuse, token misuse, or cross-platform persistence");
+    }
+
+    if (sectorValue === "financial_services") {
+      profile.typical_behaviours.push("High interest in fraud, transaction systems, and sensitive customer data");
+    }
+
+    if (sectorValue === "healthcare") {
+      profile.typical_behaviours.push("Potential impact amplification through service disruption and sensitive record access");
+    }
+
+    return profile;
+  }
+
+  function deriveDriftToFix(data) {
+    if (data.drift_to_fix && typeof data.drift_to_fix === "object") {
+      return data.drift_to_fix;
+    }
+
+    var detectionHours = parseHourEstimate(data.detection_time || "12");
+    var downtimeHours = parseHourEstimate(data.financial_impact && data.financial_impact.downtime_hours || "24");
+    var containmentHours = Math.max(4, Math.round(detectionHours * 0.75));
+    var verificationHours = Math.max(6, Math.round(downtimeHours * 0.4));
+    var totalHours = detectionHours + containmentHours + downtimeHours + verificationHours;
+
+    return {
+      detect: detectionHours || 12,
+      contain: containmentHours,
+      recover: downtimeHours || 24,
+      verify: verificationHours,
+      total: totalHours
+    };
+  }
+
   function setTextById(id, value) {
     var el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -443,6 +725,316 @@ document.addEventListener("DOMContentLoaded", function () {
     if (el) el.innerHTML = value;
   }
 
+  function ensureChartJs() {
+    if (window.Chart) {
+      return Promise.resolve(window.Chart);
+    }
+
+    if (chartJsLoadPromise) {
+      return chartJsLoadPromise;
+    }
+
+    chartJsLoadPromise = new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-sim-chartjs="true"]');
+      if (existing) {
+        existing.addEventListener("load", function () {
+          resolve(window.Chart);
+        });
+        existing.addEventListener("error", function () {
+          reject(new Error("Chart library failed to load."));
+        });
+        return;
+      }
+
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+      script.async = true;
+      script.setAttribute("data-sim-chartjs", "true");
+
+      script.onload = function () {
+        resolve(window.Chart);
+      };
+
+      script.onerror = function () {
+        reject(new Error("Chart library failed to load."));
+      };
+
+      document.head.appendChild(script);
+    });
+
+    return chartJsLoadPromise;
+  }
+
+  function buildRiskBadge(value) {
+    var cls = getSeverityClass(value);
+    return "<span class='sim-risk-pill " + cls + "'>" + escapeHtml(value) + "</span>";
+  }
+
+  function buildControlWeaknessTable(items) {
+    if (!items || !items.length) {
+      return "<p>No control weakness mapping was generated.</p>";
+    }
+
+    var html =
+      "<div class='sim-enh-table-wrap'>" +
+      "<table class='sim-enh-table'>" +
+      "<thead><tr><th>Control domain</th><th>Weakness</th><th>Risk</th></tr></thead><tbody>";
+
+    for (var i = 0; i < items.length; i++) {
+      html +=
+        "<tr>" +
+        "<td>" + escapeHtml(safeText(items[i].domain, "-")) + "</td>" +
+        "<td>" + escapeHtml(safeText(items[i].weakness, "-")) + "</td>" +
+        "<td>" + buildRiskBadge(formatTitleCase(safeText(items[i].risk, "Moderate"))) + "</td>" +
+        "</tr>";
+    }
+
+    html += "</tbody></table></div>";
+    return html;
+  }
+
+  function buildAdversaryProfileHtml(profile) {
+    return (
+      "<p><strong>Likely actor:</strong> " + escapeHtml(safeText(profile.likely_actor, "-")) + "</p>" +
+      "<p><strong>Motivation:</strong> " + escapeHtml(safeText(profile.motivation, "-")) + "</p>" +
+      "<p><strong>Typical entry methods:</strong></p>" +
+      "<ul class='sim-enh-list'>" +
+      safeArray(profile.typical_entry_methods).map(function (item) {
+        return "<li>" + escapeHtml(item) + "</li>";
+      }).join("") +
+      "</ul>" +
+      "<p><strong>Likely behaviours:</strong></p>" +
+      "<ul class='sim-enh-list'>" +
+      safeArray(profile.typical_behaviours).map(function (item) {
+        return "<li>" + escapeHtml(item) + "</li>";
+      }).join("") +
+      "</ul>"
+    );
+  }
+
+  function buildAttackTimelineHtml(attackPath) {
+    if (!attackPath || !attackPath.length) {
+      return "<p>No attack path available.</p>";
+    }
+
+    var html = "<div class='sim-attack-timeline'>";
+    for (var i = 0; i < attackPath.length; i++) {
+      var item = attackPath[i] || {};
+      var mitreText = safeText(item.mitre, "");
+      var mitreName = mitreText ? (mitreNames[mitreText] || "") : "";
+
+      html +=
+        "<div class='sim-attack-step'>" +
+          "<div class='sim-attack-phase'>" + escapeHtml(safeText(item.phase, "Phase " + (i + 1))) + "</div>" +
+          "<div class='sim-attack-text'>" + escapeHtml(safeText(item.step, "-")) + "</div>" +
+          (mitreText
+            ? "<div class='sim-attack-mitre'>MITRE " + escapeHtml(mitreText) + (mitreName ? " • " + escapeHtml(mitreName) : "") + "</div>"
+            : "") +
+        "</div>";
+    }
+    html += "</div>";
+
+    return html;
+  }
+
+  function buildDriftToFixHtml(drift) {
+    return (
+      "<div class='sim-drift-grid'>" +
+        "<div class='sim-drift-item'><span>Detect</span><strong>" + escapeHtml(formatHoursAsLabel(drift.detect)) + "</strong></div>" +
+        "<div class='sim-drift-item'><span>Contain</span><strong>" + escapeHtml(formatHoursAsLabel(drift.contain)) + "</strong></div>" +
+        "<div class='sim-drift-item'><span>Recover</span><strong>" + escapeHtml(formatHoursAsLabel(drift.recover)) + "</strong></div>" +
+        "<div class='sim-drift-item'><span>Verify</span><strong>" + escapeHtml(formatHoursAsLabel(drift.verify)) + "</strong></div>" +
+      "</div>" +
+      "<p class='sim-drift-total'><strong>Estimated Drift-to-Fix:</strong> " + escapeHtml(formatHoursAsLabel(drift.total)) + "</p>"
+    );
+  }
+
+  function injectEnhancementStyles() {
+    if (document.getElementById("sim-enhancement-styles")) return;
+
+    var style = document.createElement("style");
+    style.id = "sim-enhancement-styles";
+    style.textContent =
+      ".sim-enh-section{margin-top:20px;padding:18px;border:1px solid #dbe2ea;border-radius:14px;background:#fff;}" +
+      ".sim-enh-section.featured{background:#f8fbff;border-color:#cfe0ff;}" +
+      ".sim-enh-section h3{margin:0 0 12px;font-size:18px;line-height:1.3;font-weight:800;color:#1147d9;}" +
+      ".sim-enh-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:18px;}" +
+      ".sim-enh-list{margin:8px 0 0;padding-left:18px;}" +
+      ".sim-enh-list li{margin:0 0 8px;line-height:1.6;color:#1e293b;}" +
+      ".sim-enh-table-wrap{overflow:auto;}" +
+      ".sim-enh-table{width:100%;border-collapse:collapse;font-size:14px;}" +
+      ".sim-enh-table th,.sim-enh-table td{padding:12px;border:1px solid #dbe2ea;text-align:left;vertical-align:top;}" +
+      ".sim-enh-table th{background:#f8fbff;color:#0f172a;font-weight:800;}" +
+      ".sim-risk-pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;line-height:1.2;}" +
+      ".sim-risk-pill.severity-critical{background:#fff1f2;color:#9f1239;}" +
+      ".sim-risk-pill.severity-high{background:#fff7ed;color:#c2410c;}" +
+      ".sim-risk-pill.severity-moderate{background:#eff6ff;color:#1d4ed8;}" +
+      ".sim-attack-timeline{display:flex;flex-wrap:wrap;gap:12px;}" +
+      ".sim-attack-step{position:relative;flex:1 1 180px;min-width:160px;padding:14px;border:1px solid #dbe2ea;border-radius:12px;background:#f8fbff;}" +
+      ".sim-attack-phase{font-size:12px;line-height:1.3;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#64748b;margin-bottom:8px;}" +
+      ".sim-attack-text{font-size:14px;line-height:1.6;font-weight:700;color:#0f172a;}" +
+      ".sim-attack-mitre{margin-top:8px;font-size:12px;line-height:1.5;color:#475569;}" +
+      ".sim-confidence-wrap{margin-top:8px;}" +
+      ".sim-confidence-track{height:14px;border-radius:999px;background:#e2e8f0;overflow:hidden;}" +
+      ".sim-confidence-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#93c5fd 0%,#1147d9 100%);}" +
+      ".sim-confidence-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:center;}" +
+      ".sim-confidence-meta span{font-size:14px;color:#0f172a;font-weight:700;}" +
+      ".sim-confidence-meta strong{font-size:14px;color:#1147d9;font-weight:800;}" +
+      ".sim-chart-wrap{position:relative;min-height:280px;}" +
+      ".sim-chart-wrap canvas{width:100%!important;height:280px!important;}" +
+      ".sim-drift-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px;}" +
+      ".sim-drift-item{padding:12px;border:1px solid #dbe2ea;border-radius:12px;background:#f8fbff;text-align:center;}" +
+      ".sim-drift-item span{display:block;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#64748b;margin-bottom:6px;}" +
+      ".sim-drift-item strong{font-size:18px;line-height:1.2;color:#0f172a;}" +
+      ".sim-drift-total{margin:0;color:#1e293b;}" +
+      "@media (max-width: 991px){.sim-enh-grid,.sim-drift-grid{grid-template-columns:1fr;}.sim-chart-wrap{min-height:240px;}.sim-chart-wrap canvas{height:240px!important;}}";
+    document.head.appendChild(style);
+  }
+
+  function ensureContainer(parent, id, className, html) {
+    if (!parent) return null;
+
+    var existing = document.getElementById(id);
+    if (existing) {
+      existing.className = className || existing.className;
+      if (html !== undefined) existing.innerHTML = html;
+      return existing;
+    }
+
+    var div = document.createElement("div");
+    div.id = id;
+    if (className) div.className = className;
+    if (html !== undefined) div.innerHTML = html;
+    parent.appendChild(div);
+    return div;
+  }
+
+  function renderFinancialChart(financial) {
+    ensureChartJs().then(function () {
+      var canvas = document.getElementById("sim-financial-impact-chart");
+      if (!canvas || typeof window.Chart === "undefined") return;
+
+      var responseCost = parseMoney(financial.response_cost);
+      var lostRevenue = parseMoney(financial.lost_revenue);
+      var regulatoryExposure = parseMoney(financial.regulatory_exposure);
+      var customerRemediation = parseMoney(financial.customer_remediation_cost);
+
+      var values = [responseCost, lostRevenue, regulatoryExposure, customerRemediation];
+      var labels = ["Response Cost", "Lost Revenue", "Regulatory Exposure", "Customer Remediation"];
+      var nonZero = values.some(function (v) { return v > 0; });
+
+      if (!nonZero) {
+        values = [1];
+        labels = ["No breakdown available"];
+      }
+
+      if (financialChartInstance) {
+        try {
+          financialChartInstance.destroy();
+        } catch (e) {}
+        financialChartInstance = null;
+      }
+
+      financialChartInstance = new window.Chart(canvas, {
+        type: "doughnut",
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: nonZero
+              ? ["#1147d9", "#60a5fa", "#93c5fd", "#dbeafe"]
+              : ["#dbeafe"],
+            borderColor: "#ffffff",
+            borderWidth: 2,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                boxWidth: 14,
+                color: "#334155",
+                font: {
+                  family: "Arial",
+                  size: 12,
+                  weight: "600"
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  var label = context.label || "";
+                  var value = context.raw || 0;
+                  if (!nonZero) return label;
+                  return label + ": " + value.toLocaleString();
+                }
+              }
+            }
+          }
+        }
+      });
+    }).catch(function () {});
+  }
+
+  function renderDynamicEnhancements(data) {
+    if (!summaryWrap || !reportWrap) return;
+
+    injectEnhancementStyles();
+
+    var confidencePercent = confidenceToPercent(data.confidence);
+    var controlWeaknessHtml = buildControlWeaknessTable(data.control_weakness_map);
+    var adversaryProfileHtml = buildAdversaryProfileHtml(data.adversary_profile);
+    var driftHtml = buildDriftToFixHtml(data.drift_to_fix);
+    var timelineHtml = buildAttackTimelineHtml(data.attack_path);
+
+    var summaryEnhancementsHtml =
+      "<div class='sim-enh-grid'>" +
+        "<div class='sim-enh-section featured'>" +
+          "<h3>Financial Impact Breakdown</h3>" +
+          "<div class='sim-chart-wrap'><canvas id='sim-financial-impact-chart'></canvas></div>" +
+        "</div>" +
+        "<div class='sim-enh-section featured'>" +
+          "<h3>Confidence Indicator</h3>" +
+          "<div class='sim-confidence-wrap'>" +
+            "<div class='sim-confidence-meta'><span>Simulation confidence</span><strong>" + escapeHtml(safeText(data.confidence)) + " • " + confidencePercent + "%</strong></div>" +
+            "<div class='sim-confidence-track'><div class='sim-confidence-fill' style='width:" + confidencePercent + "%;'></div></div>" +
+            "<p style='margin:10px 0 0;line-height:1.6;color:#64748b;'>This indicates how strongly the scenario aligns to the selected context, structured assumptions, and known attack patterns.</p>" +
+          "</div>" +
+        "</div>" +
+      "</div>" +
+      "<div class='sim-enh-section'>" +
+        "<h3>Likely Attack Path Timeline</h3>" +
+        timelineHtml +
+      "</div>";
+
+    var reportEnhancementsHtml =
+      "<div class='sim-enh-grid'>" +
+        "<div class='sim-enh-section'>" +
+          "<h3>Adversary Profile</h3>" +
+          adversaryProfileHtml +
+        "</div>" +
+        "<div class='sim-enh-section'>" +
+          "<h3>Estimated Drift-to-Fix</h3>" +
+          driftHtml +
+        "</div>" +
+      "</div>" +
+      "<div class='sim-enh-section'>" +
+        "<h3>Control Weakness Map</h3>" +
+        controlWeaknessHtml +
+      "</div>";
+
+    ensureContainer(summaryWrap, "sim-dynamic-visuals", "sim-dynamic-visuals", summaryEnhancementsHtml);
+    ensureContainer(reportWrap, "sim-dynamic-report-extras", "sim-dynamic-report-extras", reportEnhancementsHtml);
+
+    renderFinancialChart(data.financial_impact || {});
+  }
+
   function renderReport(data) {
     var scenarioText = getSelectedText(scenarioEl);
     var environmentText = getSelectedText(environmentEl);
@@ -450,6 +1042,10 @@ document.addEventListener("DOMContentLoaded", function () {
     var serviceText = getSelectedText(criticalServiceEl);
     var orgSizeText = getSelectedText(organisationSizeEl);
     var currencyText = getSelectedText(currencyEl);
+
+    var scenarioValue = safeText(scenarioEl && scenarioEl.value, "");
+    var environmentValue = safeText(environmentEl && environmentEl.value, "");
+    var sectorValue = safeText(sectorEl && sectorEl.value, "");
 
     var now = new Date();
     var generatedAt = now.toLocaleString("en-GB", {
@@ -504,15 +1100,6 @@ document.addEventListener("DOMContentLoaded", function () {
       ];
     }
 
-    var controlGaps = safeArray(data.key_controls);
-    if (!controlGaps.length) {
-      controlGaps = [
-        "Control gaps require validation against live evidence.",
-        "Assurance should focus on failed preventive and detective controls.",
-        "Independent verification is recommended for high-impact services."
-      ];
-    }
-
     var immediateActions = safeArray(data.priority_actions);
     if (!immediateActions.length) {
       immediateActions = [
@@ -545,9 +1132,10 @@ document.addEventListener("DOMContentLoaded", function () {
       data.assurance_insight ||
       "This simulation suggests the greatest risk is not simply the initiating event, but the absence of fresh, corroborated evidence proving that key controls were working at the point of failure.";
 
-var confidence = data.confidence_rating || "Moderate";
-var severity = deriveSeverity(data);
-var likelihood = data.likelihood || "Moderate";
+    var confidence = deriveConfidence(data);
+    var severity = deriveSeverity(data);
+    var likelihood = deriveLikelihood(data, scenarioValue, environmentValue, sectorValue);
+
     var detectionOpportunity =
       data.detection_opportunity ||
       "Earlier detection would likely have depended on stronger monitoring of identity, audit, API and abnormal access patterns.";
@@ -559,6 +1147,13 @@ var likelihood = data.likelihood || "Moderate";
     var financial = data.financial_impact || {};
     var framework = deriveFrameworkReferences(data, scenarioText, environmentText);
     var evidenceList = deriveEvidence(data, scenarioText, environmentText, sectorText, serviceText);
+    var controlWeaknessMap = deriveControlWeaknessMap(data, scenarioValue, environmentValue, sectorValue, serviceText);
+    var adversaryProfile = deriveAdversaryProfile(data, scenarioValue, environmentValue, sectorValue);
+    var driftToFix = deriveDriftToFix({
+      detection_time: detectionTime,
+      financial_impact: financial,
+      drift_to_fix: data.drift_to_fix
+    });
 
     latestSimulationData = {
       report_id: reportId,
@@ -588,23 +1183,23 @@ var likelihood = data.likelihood || "Moderate";
       assurance_questions: assuranceQuestions,
       assurance_insight: assuranceInsight,
       conclusion: conclusion,
+      control_weakness_map: controlWeaknessMap,
+      adversary_profile: adversaryProfile,
+      drift_to_fix: driftToFix,
       raw: data
     };
 
-setTextById("sim-kpi-scenario", scenarioText);
-setTextById("sim-kpi-environment", environmentText);
-setTextById("sim-kpi-severity", severity);
-setTextById("sim-kpi-confidence", confidence);
-setTextById("sim-kpi-impact", buildImpactKpi(data));
-setTextById("sim-kpi-likelihood", likelihood);
+    setTextById("sim-kpi-scenario", scenarioText);
+    setTextById("sim-kpi-environment", environmentText);
+    setTextById("sim-kpi-severity", severity);
+    setTextById("sim-kpi-confidence", confidence);
+    setTextById("sim-kpi-impact", buildImpactKpi(latestSimulationData));
+    setTextById("sim-kpi-likelihood", likelihood);
 
-var severityEl = document.getElementById("sim-kpi-severity");
-if (severityEl) {
-  severityEl.className = "sim-kpi-value";
-  if (severity === "Critical") severityEl.className += " severity-critical";
-  if (severity === "High") severityEl.className += " severity-high";
-  if (severity === "Moderate") severityEl.className += " severity-moderate";
-}
+    var severityEl = document.getElementById("sim-kpi-severity");
+    if (severityEl) {
+      severityEl.className = "sim-kpi-value " + getSeverityClass(severity);
+    }
 
     setTextById("sim-board-risk-statement", boardRiskStatement);
     setTextById("sim-board-brief", boardBrief);
@@ -619,7 +1214,9 @@ if (severityEl) {
     setTextById("sim-financial-total", normaliseEncoding(safeText(financial.total_estimated_impact)));
 
     fillList("sim-top-actions", immediateActions.slice(0, 4), []);
-    fillList("sim-control-gaps", controlGaps.slice(0, 4), []);
+    fillList("sim-control-gaps", controlWeaknessMap.map(function (item) {
+      return item.domain + ": " + item.weakness;
+    }).slice(0, 4), []);
     fillList("sim-attack-chain", attackPath, [], "attack-path");
     fillList("sim-questions", assuranceQuestions.slice(0, 4), []);
     fillList("sim-framework-cis", framework.cis, []);
@@ -644,8 +1241,8 @@ if (severityEl) {
     setTextById("sim-report-summary", executiveSummary);
     setTextById("sim-report-severity", severity);
 
-    var financialSummary = "Estimated impact: " + buildImpactKpi(data);
-    if (data.financial_impact) {
+    var financialSummary = "Estimated impact: " + buildImpactKpi(latestSimulationData);
+    if (latestSimulationData.financial_impact) {
       financialSummary =
         "Estimated impact: " + normaliseEncoding(safeText(financial.total_estimated_impact, "-")) +
         ". Downtime: " + formatDowntime(financial.downtime_hours) +
@@ -659,8 +1256,10 @@ if (severityEl) {
 
     fillList("sim-report-attack-path", attackPath, [], "attack-path");
     fillList("sim-report-weak-signals", weakSignals, []);
-    setTextById("sim-report-impact", buildImpactText(data));
-    fillList("sim-report-controls", controlGaps, []);
+    setTextById("sim-report-impact", buildImpactText(latestSimulationData));
+    fillList("sim-report-controls", controlWeaknessMap.map(function (item) {
+      return item.domain + ": " + item.weakness + " (" + item.risk + ")";
+    }), []);
     setTextById("sim-report-framework-cis", framework.cis.length ? framework.cis.join(", ") : "-");
     setTextById("sim-report-framework-nist", framework.nist.length ? framework.nist.join(", ") : "-");
     setTextById("sim-report-framework-iso", framework.iso.length ? framework.iso.join(", ") : "-");
@@ -676,6 +1275,8 @@ if (severityEl) {
 
     if (summaryWrap) summaryWrap.classList.remove("sim-hidden");
     if (reportWrap) reportWrap.classList.remove("sim-hidden");
+
+    renderDynamicEnhancements(latestSimulationData);
 
     updateActionButtons();
 
@@ -773,13 +1374,27 @@ if (severityEl) {
     copyBtn.addEventListener("click", function (e) {
       e.preventDefault();
 
-      var textEl = document.getElementById("sim-summary-text");
-      var text = textEl ? textEl.textContent || "" : "";
-
-      if (!latestSimulationData || !text) {
+      if (!latestSimulationData) {
         showError("There is no summary available to copy yet.");
         return;
       }
+
+      var summaryParts = [
+        "Executive Summary",
+        latestSimulationData.summary || "",
+        "",
+        "Board Risk Statement",
+        latestSimulationData.board_risk_statement || "",
+        "",
+        "Estimated Impact",
+        buildImpactKpi(latestSimulationData),
+        "",
+        "Severity: " + safeText(latestSimulationData.severity, "-"),
+        "Likelihood: " + safeText(latestSimulationData.likelihood, "-"),
+        "Confidence: " + safeText(latestSimulationData.confidence, "-")
+      ];
+
+      var text = summaryParts.join("\n");
 
       if (!navigator.clipboard) {
         showError("Copy failed. Please copy the summary manually.");
@@ -880,8 +1495,8 @@ if (severityEl) {
           }
 
           var shareUrl =
-  "https://www.cybersecurityexpert.co.uk/sim-report?url=" +
-  encodeURIComponent(blobUrl);
+            "https://www.cybersecurityexpert.co.uk/sim-report?url=" +
+            encodeURIComponent(blobUrl);
 
           if (navigator.clipboard && window.isSecureContext) {
             return navigator.clipboard.writeText(shareUrl).then(function () {
