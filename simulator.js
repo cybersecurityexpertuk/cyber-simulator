@@ -6,7 +6,8 @@ document.addEventListener("DOMContentLoaded", function () {
   var simSubmit = document.getElementById("sim-submit");
   var simReset = document.getElementById("sim-reset");
   var simFeedback = document.getElementById("sim-feedback");
-var shareResultEl = document.getElementById("sim-share-result");
+  var shareResultEl = document.getElementById("sim-share-result");
+
   var scenarioEl = document.getElementById("scenario");
   var environmentEl = document.getElementById("environment");
   var sectorEl = document.getElementById("sector");
@@ -68,6 +69,12 @@ var shareResultEl = document.getElementById("sim-share-result");
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function normaliseEncoding(value) {
+    return safeText(value, "")
+      .replace(/Â£/g, "£")
+      .replace(/â€”/g, "—");
   }
 
   function getSelectedText(selectEl) {
@@ -134,13 +141,13 @@ var shareResultEl = document.getElementById("sim-share-result");
           escapeHtml(safeText(item.phase, "")) +
           ":</strong> " +
           escapeHtml(safeText(item.step, "")) +
-         (mitreId
-  ? "<br><a class='sim-mitre-tag' href='" +
-    mitreUrl +
-    "' target='_blank' rel='noopener noreferrer'>" +
-    escapeHtml(badgeText) +
-    "</a>"
-  : "") +
+          (mitreId
+            ? "<br><a class='sim-mitre-tag' href='" +
+              mitreUrl +
+              "' target='_blank' rel='noopener noreferrer'>" +
+              escapeHtml(badgeText) +
+              "</a>"
+            : "") +
           "</li>";
       } else {
         html += "<li>" + escapeHtml(item) + "</li>";
@@ -160,6 +167,12 @@ var shareResultEl = document.getElementById("sim-share-result");
   function clearResults() {
     if (summaryWrap) summaryWrap.classList.add("sim-hidden");
     if (reportWrap) reportWrap.classList.add("sim-hidden");
+  }
+
+  function clearShareResult() {
+    if (shareResultEl) {
+      shareResultEl.innerHTML = "";
+    }
   }
 
   function setButtonDisplay(el, show) {
@@ -206,14 +219,12 @@ var shareResultEl = document.getElementById("sim-share-result");
     clearInterval(simProgressInterval);
     setRunningState(false);
 
-if (shareResultEl) {
-  shareResultEl.innerHTML =
-    '<div class="sim-success"><strong>Share link created.</strong><br><a class="sim-share-link" href="' +
-    escapeHtml(shareUrl) +
-    '" target="_blank" rel="noopener noreferrer">' +
-    escapeHtml(shareUrl) +
-    "</a></div>";
-}
+    if (simFeedback) {
+      simFeedback.innerHTML =
+        '<div class="sim-error"><strong>Unable to run simulation.</strong><br>' +
+        escapeHtml(message) +
+        "</div>";
+    }
   }
 
   function showSuccess(message) {
@@ -338,7 +349,7 @@ if (shareResultEl) {
 
   function buildImpactKpi(data) {
     if (data.financial_impact && data.financial_impact.total_estimated_impact) {
-      return data.financial_impact.total_estimated_impact;
+      return normaliseEncoding(data.financial_impact.total_estimated_impact);
     }
     return "Contextual estimate";
   }
@@ -593,11 +604,11 @@ if (shareResultEl) {
     setTextById("sim-detection-opportunity", detectionOpportunity);
 
     setTextById("sim-financial-downtime", formatDowntime(financial.downtime_hours));
-    setTextById("sim-financial-response", safeText(financial.response_cost));
-    setTextById("sim-financial-revenue", safeText(financial.lost_revenue));
-    setTextById("sim-financial-regulatory", safeText(financial.regulatory_exposure));
-    setTextById("sim-financial-customer", safeText(financial.customer_remediation_cost));
-    setTextById("sim-financial-total", safeText(financial.total_estimated_impact));
+    setTextById("sim-financial-response", normaliseEncoding(safeText(financial.response_cost)));
+    setTextById("sim-financial-revenue", normaliseEncoding(safeText(financial.lost_revenue)));
+    setTextById("sim-financial-regulatory", normaliseEncoding(safeText(financial.regulatory_exposure)));
+    setTextById("sim-financial-customer", normaliseEncoding(safeText(financial.customer_remediation_cost)));
+    setTextById("sim-financial-total", normaliseEncoding(safeText(financial.total_estimated_impact)));
 
     fillList("sim-top-actions", immediateActions.slice(0, 4), []);
     fillList("sim-control-gaps", controlGaps.slice(0, 4), []);
@@ -628,12 +639,12 @@ if (shareResultEl) {
     var financialSummary = "Estimated impact: " + buildImpactKpi(data);
     if (data.financial_impact) {
       financialSummary =
-        "Estimated impact: " + safeText(financial.total_estimated_impact, "-") +
+        "Estimated impact: " + normaliseEncoding(safeText(financial.total_estimated_impact, "-")) +
         ". Downtime: " + formatDowntime(financial.downtime_hours) +
-        ". Response cost: " + safeText(financial.response_cost, "-") +
-        ". Lost revenue: " + safeText(financial.lost_revenue, "-") +
-        ". Regulatory exposure: " + safeText(financial.regulatory_exposure, "-") +
-        ". Customer remediation: " + safeText(financial.customer_remediation_cost, "-") + ".";
+        ". Response cost: " + normaliseEncoding(safeText(financial.response_cost, "-")) +
+        ". Lost revenue: " + normaliseEncoding(safeText(financial.lost_revenue, "-")) +
+        ". Regulatory exposure: " + normaliseEncoding(safeText(financial.regulatory_exposure, "-")) +
+        ". Customer remediation: " + normaliseEncoding(safeText(financial.customer_remediation_cost, "-")) + ".";
     }
 
     setTextById("sim-report-financial-impact", financialSummary);
@@ -668,6 +679,7 @@ if (shareResultEl) {
   function resetFormAndResults() {
     if (simForm) simForm.reset();
     if (simFeedback) simFeedback.innerHTML = "";
+    clearShareResult();
 
     latestSimulationData = null;
     latestReportId = null;
@@ -788,121 +800,126 @@ if (shareResultEl) {
   }
 
   if (shareBtn) {
-  shareBtn.addEventListener("click", function (e) {
-    e.preventDefault();
+    shareBtn.addEventListener("click", function (e) {
+      e.preventDefault();
 
-    if (simulationRunning) return;
+      if (simulationRunning) return;
 
-    if (!latestSimulationData) {
-      showError("No simulation to share. Please run a simulation first.");
-      return;
-    }
+      if (!latestSimulationData) {
+        if (shareResultEl) {
+          shareResultEl.innerHTML =
+            '<div class="sim-error"><strong>No simulation to share.</strong><br>Please run a simulation first.</div>';
+        }
+        return;
+      }
 
-    shareBtn.disabled = true;
-    shareBtn.textContent = "Creating link...";
+      shareBtn.disabled = true;
+      shareBtn.textContent = "Creating link...";
 
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function () {
-      controller.abort();
-    }, 20000);
+      if (shareResultEl) {
+        shareResultEl.innerHTML =
+          '<div class="sim-status"><strong>Creating share link...</strong></div>';
+      }
 
-    fetch(SHARE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        report_id: latestReportId,
-        data: latestSimulationData
-      }),
-      signal: controller.signal
-    })
-      .then(function (response) {
-        clearTimeout(timeoutId);
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () {
+        controller.abort();
+      }, 20000);
 
-        return response.text().then(function (text) {
-          var parsed = {};
+      fetch(SHARE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          report_id: latestReportId,
+          data: latestSimulationData
+        }),
+        signal: controller.signal
+      })
+        .then(function (response) {
+          clearTimeout(timeoutId);
 
-          try {
-            parsed = text ? JSON.parse(text) : {};
-          } catch (err) {}
+          return response.text().then(function (text) {
+            var parsed = {};
 
-          if (!response.ok) {
-            throw new Error(
-              parsed.error ||
-              parsed.message ||
-              text ||
-              "Failed to create share link."
-            );
+            try {
+              parsed = text ? JSON.parse(text) : {};
+            } catch (err) {}
+
+            if (!response.ok) {
+              throw new Error(
+                parsed.error ||
+                parsed.message ||
+                text ||
+                "Failed to create share link."
+              );
+            }
+
+            return parsed;
+          });
+        })
+        .then(function (result) {
+          var blobUrl =
+            result.blob_url ||
+            result.url ||
+            result.share_url ||
+            result.blobUrl ||
+            "";
+
+          if (!blobUrl) {
+            throw new Error("Share service did not return a blob URL.");
           }
 
-          return parsed;
+          var shareUrl = blobUrl;
+
+          if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(shareUrl).then(function () {
+              if (shareResultEl) {
+                shareResultEl.innerHTML =
+                  '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br><a class="sim-share-link" href="' +
+                  escapeHtml(shareUrl) +
+                  '" target="_blank" rel="noopener noreferrer">' +
+                  escapeHtml(shareUrl) +
+                  "</a></div>";
+              }
+            }).catch(function () {
+              if (shareResultEl) {
+                shareResultEl.innerHTML =
+                  '<div class="sim-success"><strong>Share link created.</strong><br><a class="sim-share-link" href="' +
+                  escapeHtml(shareUrl) +
+                  '" target="_blank" rel="noopener noreferrer">' +
+                  escapeHtml(shareUrl) +
+                  "</a></div>";
+              }
+            });
+          }
+
+          if (shareResultEl) {
+            shareResultEl.innerHTML =
+              '<div class="sim-success"><strong>Share link created.</strong><br><a class="sim-share-link" href="' +
+              escapeHtml(shareUrl) +
+              '" target="_blank" rel="noopener noreferrer">' +
+              escapeHtml(shareUrl) +
+              "</a></div>";
+          }
+        })
+        .catch(function (error) {
+          if (shareResultEl) {
+            shareResultEl.innerHTML =
+              '<div class="sim-error"><strong>Share link failed.</strong><br>' +
+              escapeHtml(error.name === "AbortError" ? "The share request timed out." : (error.message || "Unknown error")) +
+              "</div>";
+          }
+        })
+        .finally(function () {
+          clearTimeout(timeoutId);
+          shareBtn.disabled = false;
+          shareBtn.textContent = "Create Share Link";
+          updateActionButtons();
         });
-      })
-      .then(function (result) {
-        console.log("Share API result:", result);
-
-        var blobUrl =
-          result.blob_url ||
-          result.url ||
-          result.share_url ||
-          result.blobUrl ||
-          "";
-
-        if (!blobUrl) {
-          throw new Error("Share service did not return a blob URL.");
-        }
-
-var shareUrl = blobUrl;
-
-        if (navigator.clipboard && window.isSecureContext) {
-          return navigator.clipboard.writeText(shareUrl).then(function () {
-            if (simFeedback) {
-              simFeedback.innerHTML =
-                '<div class="sim-success"><strong>Share link created.</strong><br>Link copied to clipboard:<br><a href="' +
-                escapeHtml(shareUrl) +
-                '" target="_blank" rel="noopener noreferrer">' +
-                escapeHtml(shareUrl) +
-                "</a></div>";
-            }
-          }).catch(function () {
-            if (simFeedback) {
-              simFeedback.innerHTML =
-                '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
-                escapeHtml(shareUrl) +
-                '" target="_blank" rel="noopener noreferrer">' +
-                escapeHtml(shareUrl) +
-                "</a></div>";
-            }
-          });
-        }
-
-        if (simFeedback) {
-          simFeedback.innerHTML =
-            '<div class="sim-success"><strong>Share link created.</strong><br><a href="' +
-            escapeHtml(shareUrl) +
-            '" target="_blank" rel="noopener noreferrer">' +
-            escapeHtml(shareUrl) +
-            "</a></div>";
-        }
-      })
-      .catch(function (error) {
-        console.error("Share link failed:", error);
-
-        if (error.name === "AbortError") {
-          showError("The share request timed out.");
-        } else {
-          showError(error.message || "Unknown error");
-        }
-      })
-      .finally(function () {
-        clearTimeout(timeoutId);
-        shareBtn.disabled = false;
-        shareBtn.textContent = "Create Share Link";
-        updateActionButtons();
-      });
-  });
-}
+    });
+  }
 
   if (runAnotherBtn) {
     runAnotherBtn.addEventListener("click", function (e) {
@@ -922,6 +939,7 @@ var shareUrl = blobUrl;
       if (simulationRunning) return;
 
       clearResults();
+      clearShareResult();
 
       if (!scenarioEl.value || !environmentEl.value || !sectorEl.value) {
         showError("Please select Scenario, Environment, and Sector before running the simulation.");
