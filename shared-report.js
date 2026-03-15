@@ -31,41 +31,11 @@
     return Array.isArray(value) ? value : [];
   }
 
-  function parseHourEstimate(value) {
-    var text = safeText(value, "").toLowerCase().trim();
-    if (!text) return 0;
-
-    var rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-    if (rangeMatch) {
-      return (parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2;
-    }
-
-    var numberMatch = text.match(/(\d+(?:\.\d+)?)/);
-    if (!numberMatch) return 0;
-
-    var num = parseFloat(numberMatch[1]);
-    if (isNaN(num)) return 0;
-
-    if (text.indexOf("day") !== -1) return num * 24;
-    if (text.indexOf("week") !== -1) return num * 168;
-    return num;
-  }
-
-  function formatHoursAsLabel(hours) {
-    hours = Math.max(0, Math.round(hours));
-    if (hours >= 48) {
-      var days = (hours / 24).toFixed(hours % 24 === 0 ? 0 : 1);
-      return days + " days";
-    }
-    return hours + " hours";
-  }
-
   function badgeClass(value) {
     var v = safeText(value, "").toLowerCase();
     if (v === "critical") return "critical";
     if (v === "high") return "high";
-    if (v === "moderate") return "moderate";
-    if (v === "medium") return "moderate";
+    if (v === "moderate" || v === "medium") return "moderate";
     if (v === "low") return "low";
     return "moderate";
   }
@@ -78,12 +48,50 @@
     return isNaN(parsed) ? 0 : parsed;
   }
 
+  function parseHourEstimate(value) {
+    var text = safeText(value, "").toLowerCase().trim();
+    if (!text) return 0;
+
+    var rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+      var low = parseFloat(rangeMatch[1]);
+      var high = parseFloat(rangeMatch[2]);
+      if (!isNaN(low) && !isNaN(high)) {
+        if (text.indexOf("day") !== -1) return ((low + high) / 2) * 24;
+        if (text.indexOf("week") !== -1) return ((low + high) / 2) * 168;
+        return (low + high) / 2;
+      }
+    }
+
+    var numMatch = text.match(/(\d+(?:\.\d+)?)/);
+    if (!numMatch) return 0;
+
+    var num = parseFloat(numMatch[1]);
+    if (isNaN(num)) return 0;
+
+    if (text.indexOf("day") !== -1) return num * 24;
+    if (text.indexOf("week") !== -1) return num * 168;
+    return num;
+  }
+
+  function formatHoursAsLabel(hours) {
+    hours = Math.max(0, Math.round(hours));
+
+    if (hours >= 48) {
+      var days = hours / 24;
+      return (days % 1 === 0 ? days.toFixed(0) : days.toFixed(1)) + " days";
+    }
+
+    return hours + " hours";
+  }
+
   function confidenceToPercent(value) {
     var v = safeText(value, "").toLowerCase();
     if (v === "critical") return 90;
     if (v === "high") return 78;
     if (v === "moderate" || v === "medium") return 58;
     if (v === "low") return 36;
+
     var n = parseFloat(v);
     if (!isNaN(n)) return Math.max(0, Math.min(100, n));
     return 60;
@@ -106,7 +114,7 @@
 
   function renderMitre(item) {
     var mitreText = safeText(item.mitre, "");
-    if (!mitreText) return "";
+    if (!mitreText || mitreText === "-") return "";
     return '<div class="shared-timeline-mitre">MITRE: ' + escapeHtml(mitreText) + "</div>";
   }
 
@@ -118,6 +126,7 @@
     var html = '<ul class="shared-list">';
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
+
       if (typeof item === "object" && item) {
         html += "<li>" + escapeHtml(JSON.stringify(item)) + "</li>";
       } else {
@@ -147,24 +156,59 @@
     return html;
   }
 
-  function buildDriftHtml(drift) {
+  function normaliseDriftData(drift, data) {
     var detect = parseHourEstimate(drift && drift.detect);
     var contain = parseHourEstimate(drift && drift.contain);
     var recover = parseHourEstimate(drift && drift.recover);
     var verify = parseHourEstimate(drift && drift.verify);
 
+    if (!detect) {
+      detect = parseHourEstimate(data && data.detection_time);
+    }
+
+    if (!recover) {
+      recover = parseHourEstimate(data && data.financial_impact && data.financial_impact.downtime_hours);
+    }
+
+    if (!contain && detect) {
+      contain = Math.max(6, Math.round(detect * 0.3));
+    }
+
+    if (!verify && recover) {
+      verify = Math.max(8, Math.round(recover * 0.35));
+    }
+
     if (!detect && !contain && !recover && !verify) {
+      return null;
+    }
+
+    return {
+      detect: detect || 0,
+      contain: contain || 0,
+      recover: recover || 0,
+      verify: verify || 0
+    };
+  }
+
+  function buildDriftHtml(drift, data) {
+    var normalised = normaliseDriftData(drift, data);
+
+    if (!normalised) {
       return "<p>No drift-to-fix estimate was available.</p>";
     }
 
-    var total = detect + contain + recover + verify;
+    var total =
+      normalised.detect +
+      normalised.contain +
+      normalised.recover +
+      normalised.verify;
 
     return (
       '<div class="shared-drift-grid">' +
-        '<div class="shared-drift-item"><span>Detect</span><strong>' + escapeHtml(formatHoursAsLabel(detect)) + "</strong></div>" +
-        '<div class="shared-drift-item"><span>Contain</span><strong>' + escapeHtml(formatHoursAsLabel(contain)) + "</strong></div>" +
-        '<div class="shared-drift-item"><span>Recover</span><strong>' + escapeHtml(formatHoursAsLabel(recover)) + "</strong></div>" +
-        '<div class="shared-drift-item"><span>Verify</span><strong>' + escapeHtml(formatHoursAsLabel(verify)) + "</strong></div>" +
+        '<div class="shared-drift-item"><span>Detect</span><strong>' + escapeHtml(formatHoursAsLabel(normalised.detect)) + "</strong></div>" +
+        '<div class="shared-drift-item"><span>Contain</span><strong>' + escapeHtml(formatHoursAsLabel(normalised.contain)) + "</strong></div>" +
+        '<div class="shared-drift-item"><span>Recover</span><strong>' + escapeHtml(formatHoursAsLabel(normalised.recover)) + "</strong></div>" +
+        '<div class="shared-drift-item"><span>Verify</span><strong>' + escapeHtml(formatHoursAsLabel(normalised.verify)) + "</strong></div>" +
       "</div>" +
       '<p class="shared-drift-total"><strong>Estimated Drift-to-Fix:</strong> ' + escapeHtml(formatHoursAsLabel(total)) + "</p>"
     );
@@ -308,7 +352,7 @@
     facebookLink.href = share.facebookUrl;
     whatsappLink.href = share.whatsappUrl;
 
-    copyBtn.addEventListener("click", function () {
+    copyBtn.onclick = function () {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(share.pageUrl)
           .then(function () {
@@ -328,17 +372,17 @@
           showShareFeedback("Could not copy automatically. Please copy the URL from your browser address bar.", true);
         }
       }
-    });
+    };
 
     if (navigator.share) {
       nativeBtn.style.display = "inline-flex";
-      nativeBtn.addEventListener("click", function () {
+      nativeBtn.onclick = function () {
         navigator.share({
           title: share.pageTitle,
           text: share.shareText,
           url: share.pageUrl
         }).catch(function () {});
-      });
+      };
     }
 
     shareBar.style.display = "flex";
@@ -436,7 +480,7 @@
         '<div class="shared-box wide"><h3>Key Assurance Questions</h3>' + listHtml(data.assurance_questions) + "</div>" +
         '<div class="shared-box"><h3>Assurance Insight</h3>' + makeParagraph(data.assurance_insight) + "</div>" +
         '<div class="shared-box"><h3>Adversary Profile</h3>' + buildAdversaryHtml(data.adversary_profile) + "</div>" +
-        '<div class="shared-box"><h3>Estimated Drift-to-Fix</h3>' + buildDriftHtml(data.drift_to_fix) + "</div>" +
+        '<div class="shared-box"><h3>Estimated Drift-to-Fix</h3>' + buildDriftHtml(data.drift_to_fix, data) + "</div>" +
         '<div class="shared-box wide"><h3>Control Weakness Map</h3>' + buildWeaknessTable(data.control_weakness_map) + "</div>" +
         '<div class="shared-box wide"><h3>Conclusion</h3>' + makeParagraph(data.conclusion) + "</div>" +
       "</div>" +
