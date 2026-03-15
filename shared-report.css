@@ -488,6 +488,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 18px;
+  align-items: start;
 }
 
 .shared-detail-panel {
@@ -500,6 +501,7 @@
   font-weight: 800;
   color: #1147d9;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .shared-detail-panel p {
