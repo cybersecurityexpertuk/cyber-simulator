@@ -233,10 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (reportWrap) reportWrap.classList.add("sim-hidden");
 
     var dynamicSummary = document.getElementById("sim-dynamic-visuals");
-    var dynamicReport = document.getElementById("sim-dynamic-report-extras");
-
     if (dynamicSummary) dynamicSummary.remove();
-    if (dynamicReport) dynamicReport.remove();
 
     if (financialChartInstance) {
       try {
@@ -695,10 +692,33 @@ document.addEventListener("DOMContentLoaded", function () {
     return profile;
   }
 
-  function deriveDriftToFix(data) {
-    if (data.drift_to_fix && typeof data.drift_to_fix === "object") {
-      return data.drift_to_fix;
-    }
+function deriveDriftToFix(data) {
+  var source = data.drift_to_fix && typeof data.drift_to_fix === "object"
+    ? data.drift_to_fix
+    : {};
+
+  var detectHours = parseHourEstimate(source.detect || data.detection_time || "12");
+  var containHours = parseHourEstimate(source.contain || "8");
+  var recoverHours = parseHourEstimate(
+    source.recover || ((data.financial_impact && data.financial_impact.downtime_hours) || "24")
+  );
+  var verifyHours = parseHourEstimate(source.verify || "12");
+
+  if (!detectHours) detectHours = 12;
+  if (!containHours) containHours = Math.max(4, Math.round(detectHours * 0.75));
+  if (!recoverHours) recoverHours = 24;
+  if (!verifyHours) verifyHours = Math.max(6, Math.round(recoverHours * 0.4));
+
+  var totalHours = detectHours + containHours + recoverHours + verifyHours;
+
+  return {
+    detect: detectHours,
+    contain: containHours,
+    recover: recoverHours,
+    verify: verifyHours,
+    total: totalHours
+  };
+}
 
     var detectionHours = parseHourEstimate(data.detection_time || "12");
     var downtimeHours = parseHourEstimate(data.financial_impact && data.financial_impact.downtime_hours || "24");
@@ -982,8 +1002,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }).catch(function () {});
   }
 
-  function renderDynamicEnhancements(data) {
-    if (!summaryWrap || !reportWrap) return;
+function renderDynamicEnhancements(data) {
+  if (!summaryWrap) return;
 
     injectEnhancementStyles();
 
@@ -1029,8 +1049,39 @@ document.addEventListener("DOMContentLoaded", function () {
         controlWeaknessHtml +
       "</div>";
 
-    ensureContainer(summaryWrap, "sim-dynamic-visuals", "sim-dynamic-visuals", summaryEnhancementsHtml);
-    ensureContainer(reportWrap, "sim-dynamic-report-extras", "sim-dynamic-report-extras", reportEnhancementsHtml);
+    var combinedHtml =
+      summaryEnhancementsHtml +
+      "<div class='sim-enh-grid'>" +
+        "<div class='sim-enh-section'>" +
+          "<h3>Adversary Profile</h3>" +
+          adversaryProfileHtml +
+        "</div>" +
+        "<div class='sim-enh-section'>" +
+          "<h3>Estimated Drift-to-Fix</h3>" +
+          driftHtml +
+        "</div>" +
+      "</div>" +
+      "<div class='sim-enh-section'>" +
+        "<h3>Control Weakness Map</h3>" +
+        controlWeaknessHtml +
+      "</div>";
+
+    var existing = document.getElementById("sim-dynamic-visuals");
+    if (existing) {
+      existing.innerHTML = combinedHtml;
+    } else {
+      var container = document.createElement("div");
+      container.id = "sim-dynamic-visuals";
+      container.className = "sim-dynamic-visuals";
+      container.innerHTML = combinedHtml;
+
+      var actionsEl = summaryWrap.querySelector(".sim-actions.sim-no-print");
+      if (actionsEl && actionsEl.parentNode) {
+        actionsEl.parentNode.insertBefore(container, actionsEl);
+      } else {
+        summaryWrap.appendChild(container);
+      }
+    }
 
     renderFinancialChart(data.financial_impact || {});
   }
