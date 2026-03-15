@@ -692,45 +692,30 @@ document.addEventListener("DOMContentLoaded", function () {
     return profile;
   }
 
-function deriveDriftToFix(data) {
-  var source = data.drift_to_fix && typeof data.drift_to_fix === "object"
-    ? data.drift_to_fix
-    : {};
+  function deriveDriftToFix(data) {
+    var source = data.drift_to_fix && typeof data.drift_to_fix === "object"
+      ? data.drift_to_fix
+      : {};
 
-  var detectHours = parseHourEstimate(source.detect || data.detection_time || "12");
-  var containHours = parseHourEstimate(source.contain || "8");
-  var recoverHours = parseHourEstimate(
-    source.recover || ((data.financial_impact && data.financial_impact.downtime_hours) || "24")
-  );
-  var verifyHours = parseHourEstimate(source.verify || "12");
+    var detectHours = parseHourEstimate(source.detect || data.detection_time || "12");
+    var containHours = parseHourEstimate(source.contain || "8");
+    var recoverHours = parseHourEstimate(
+      source.recover || ((data.financial_impact && data.financial_impact.downtime_hours) || "24")
+    );
+    var verifyHours = parseHourEstimate(source.verify || "12");
 
-  if (!detectHours) detectHours = 12;
-  if (!containHours) containHours = Math.max(4, Math.round(detectHours * 0.75));
-  if (!recoverHours) recoverHours = 24;
-  if (!verifyHours) verifyHours = Math.max(6, Math.round(recoverHours * 0.4));
+    if (!detectHours) detectHours = 12;
+    if (!containHours) containHours = Math.max(4, Math.round(detectHours * 0.75));
+    if (!recoverHours) recoverHours = 24;
+    if (!verifyHours) verifyHours = Math.max(6, Math.round(recoverHours * 0.4));
 
-  var totalHours = detectHours + containHours + recoverHours + verifyHours;
-
-  return {
-    detect: detectHours,
-    contain: containHours,
-    recover: recoverHours,
-    verify: verifyHours,
-    total: totalHours
-  };
-}
-
-    var detectionHours = parseHourEstimate(data.detection_time || "12");
-    var downtimeHours = parseHourEstimate(data.financial_impact && data.financial_impact.downtime_hours || "24");
-    var containmentHours = Math.max(4, Math.round(detectionHours * 0.75));
-    var verificationHours = Math.max(6, Math.round(downtimeHours * 0.4));
-    var totalHours = detectionHours + containmentHours + downtimeHours + verificationHours;
+    var totalHours = detectHours + containHours + recoverHours + verifyHours;
 
     return {
-      detect: detectionHours || 12,
-      contain: containmentHours,
-      recover: downtimeHours || 24,
-      verify: verificationHours,
+      detect: detectHours,
+      contain: containHours,
+      recover: recoverHours,
+      verify: verifyHours,
       total: totalHours
     };
   }
@@ -911,24 +896,6 @@ function deriveDriftToFix(data) {
     document.head.appendChild(style);
   }
 
-  function ensureContainer(parent, id, className, html) {
-    if (!parent) return null;
-
-    var existing = document.getElementById(id);
-    if (existing) {
-      existing.className = className || existing.className;
-      if (html !== undefined) existing.innerHTML = html;
-      return existing;
-    }
-
-    var div = document.createElement("div");
-    div.id = id;
-    if (className) div.className = className;
-    if (html !== undefined) div.innerHTML = html;
-    parent.appendChild(div);
-    return div;
-  }
-
   function renderFinancialChart(financial) {
     ensureChartJs().then(function () {
       var canvas = document.getElementById("sim-financial-impact-chart");
@@ -1002,8 +969,8 @@ function deriveDriftToFix(data) {
     }).catch(function () {});
   }
 
-function renderDynamicEnhancements(data) {
-  if (!summaryWrap) return;
+  function renderDynamicEnhancements(data) {
+    if (!summaryWrap) return;
 
     injectEnhancementStyles();
 
@@ -1031,22 +998,6 @@ function renderDynamicEnhancements(data) {
       "<div class='sim-enh-section'>" +
         "<h3>Likely Attack Path Timeline</h3>" +
         timelineHtml +
-      "</div>";
-
-    var reportEnhancementsHtml =
-      "<div class='sim-enh-grid'>" +
-        "<div class='sim-enh-section'>" +
-          "<h3>Adversary Profile</h3>" +
-          adversaryProfileHtml +
-        "</div>" +
-        "<div class='sim-enh-section'>" +
-          "<h3>Estimated Drift-to-Fix</h3>" +
-          driftHtml +
-        "</div>" +
-      "</div>" +
-      "<div class='sim-enh-section'>" +
-        "<h3>Control Weakness Map</h3>" +
-        controlWeaknessHtml +
       "</div>";
 
     var combinedHtml =
